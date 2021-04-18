@@ -30,6 +30,6 @@ fetchPredictions_ apiKey =
       logger defaultLoc logSource LevelInfo "Finished fetchPredictions"
       return $ getResponseBody res
 
-fetchPredictions :: MonadIO m => B8.ByteString -> m B8.ByteString 
+fetchPredictions :: MonadIO m => B8.ByteString -> m B8.ByteString
 fetchPredictions apiKey =
   liftIO $ runStdoutLoggingT (fetchPredictions_ apiKey)

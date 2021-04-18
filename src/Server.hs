@@ -7,7 +7,6 @@ module Server
 where
 
 import Control.Concurrent
-import Control.Concurrent.Async
 import DB
 import qualified Data.ByteString.Char8 as B8
 import Network.Wai
