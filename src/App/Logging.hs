@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE LambdaCase #-}
 
 module App.Logging where
 
@@ -8,18 +9,18 @@ import Relude
 import Network.HTTP.Client
 import Control.Exception
 
-logLeft :: (LogStr -> IO ()) -> ExceptT String IO a -> ExceptT String IO a
+logLeft :: (LogStr -> IO ()) -> ExceptT String IO a -> MaybeT IO a
 logLeft logger except =
-  ExceptT $
+  MaybeT $
     runExceptT except
-      >>= \eitherVal -> case eitherVal of
+      >>= \case
         Left err -> do
           logger $ show err
-          return $ Left err
-        _ ->
-          return eitherVal
+          return Nothing
+        Right val ->
+          return (Just val)
 
-catchAndLogHttpException :: (LogStr -> IO ()) -> IO a -> ExceptT String IO a
+catchAndLogHttpException :: (LogStr -> IO ()) -> IO a -> MaybeT IO a
 catchAndLogHttpException logger getRes =
   logLeft logger $ ExceptT $ catch (Right <$> getRes) (return . handle)
   where

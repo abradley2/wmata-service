@@ -69,7 +69,7 @@ predictionsRequest apiKey = do
     addRequestHeader "Accept" "application/json" $
       addRequestHeader "api_key" apiKey req
 
-fetchPredictions_ :: B8.ByteString -> LoggingT (ExceptT String IO) ApiResponse
+fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) ApiResponse
 fetchPredictions_ apiKey =
   LoggingT $
     \logger -> do
@@ -93,4 +93,4 @@ fetchPredictions_ apiKey =
 
 fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe ApiResponse)
 fetchPredictions apiKey =
-  liftIO $ fmap rightToMaybe $ runExceptT $ runStdoutLoggingT (fetchPredictions_ apiKey)
+  liftIO $ runMaybeT $ runStdoutLoggingT (fetchPredictions_ apiKey)
