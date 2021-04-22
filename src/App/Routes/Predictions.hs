@@ -88,8 +88,8 @@ fetchPredictions_ apiKey =
         (logErr . (<>) "Error decoding api results: ")
         $ decodeApiResponse (getResponseBody res)
   where
-    decodeApiResponse :: B8.ByteString -> ExceptT String IO ApiResponse
-    decodeApiResponse = hoistEither . eitherDecode . LazyB8.fromStrict
+    decodeApiResponse :: B8.ByteString -> Either String ApiResponse
+    decodeApiResponse = eitherDecode . LazyB8.fromStrict
 
 fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe ApiResponse)
 fetchPredictions apiKey =

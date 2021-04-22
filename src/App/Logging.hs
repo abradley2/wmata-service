@@ -9,10 +9,12 @@ import Relude
 import Network.HTTP.Client
 import Control.Exception
 
-logLeft :: (LogStr -> IO ()) -> ExceptT String IO a -> MaybeT IO a
-logLeft logger except =
+logLeft logger = logIOLeft logger . return 
+
+logIOLeft :: (LogStr -> IO ()) -> IO (Either String a)-> MaybeT IO a
+logIOLeft logger ioEither =
   MaybeT $
-    runExceptT except
+    ioEither
       >>= \case
         Left err -> do
           logger $ show err
@@ -22,7 +24,7 @@ logLeft logger except =
 
 catchAndLogHttpException :: (LogStr -> IO ()) -> IO a -> MaybeT IO a
 catchAndLogHttpException logger getRes =
-  logLeft logger $ ExceptT $ catch (Right <$> getRes) (return . handle)
+  logIOLeft logger $ catch (Right <$> getRes) (return . handle)
   where
     handle :: HttpException -> Either String a
     handle ex = case ex of
