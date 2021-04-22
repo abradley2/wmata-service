@@ -86,8 +86,7 @@ fetchPredictions_ apiKey =
       lift $ logInf "Finished fetchPredictions"
       logLeft
         (logErr . (<>) "Error decoding api results: ")
-        $ decodeApiResponse $
-          getResponseBody res
+        $ decodeApiResponse (getResponseBody res)
   where
     decodeApiResponse :: B8.ByteString -> ExceptT String IO ApiResponse
     decodeApiResponse = hoistEither . eitherDecode . LazyB8.fromStrict
