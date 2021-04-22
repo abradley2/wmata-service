@@ -7,15 +7,19 @@ module Server
 where
 
 import Control.Concurrent
-import DB
+import App.DB
+import Data.Aeson
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy.Char8 as LazyB8 
+import qualified Data.Text.Lazy as TextLazy
+import Network.HTTP.Types.Status
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets
 import Relude
-import qualified Routes.Predictions as Predictions
-import qualified Routes.Stations as Stations
+import qualified App.Routes.Predictions as Predictions
+import qualified App.Routes.Stations as Stations
 import System.Environment
 import Web.Scotty as Scotty
 
@@ -35,7 +39,7 @@ wsApp db pendingConnection = do
 
 serveConnection :: MonadIO m => DataBase -> Connection -> m ()
 serveConnection db con = do
-  val <- DB.retrieveLatestPredictions db
+  val <- retrieveLatestPredictions db
   liftIO $ sendDataMessage con $ Text (show val) Nothing
   liftIO socketInterval
   serveConnection db con
@@ -48,9 +52,14 @@ socketInterval = do
 pollPredictions :: MonadIO m => DataBase -> B8.ByteString -> m ()
 pollPredictions db apiKey = do
   predictions <- Predictions.fetchPredictions apiKey
-  DB.storeLatestPredictions db predictions
+  maybe
+    (return ())
+    (storeLatestPredictions db . LazyB8.toStrict . encode)
+    predictions
   liftIO pollInterval
   pollPredictions db apiKey
+  where
+    encode = Data.Aeson.encode
 
 pollInterval :: IO ()
 pollInterval = do
@@ -65,13 +74,22 @@ apiApp = Scotty.scottyApp $ do
 
   get "/api/predictions" $ do
     res <- withEnv Predictions.fetchPredictions
-    html $ show res
+    case res of
+      Nothing -> do
+        status status500
+        text "Internal Server Error"
+      Just jsonVal -> do
+        status status200
+        json jsonVal
   where
+    json = Scotty.json
     get = Scotty.get
+    decode :: B8.ByteString -> Either String Predictions.ApiResponse
+    decode = eitherDecode . LazyB8.fromStrict
 
 app :: IO Application
 app = do
-  db <- DB.openDB
+  db <- openDB
   forkIO $ withEnv $ pollPredictions db
   websocketsOr defaultConnectionOptions (wsApp db) <$> apiApp
 

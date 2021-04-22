@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Routes.Stations where
+module App.Routes.Stations where
 
 import Control.Monad.Logger
 import qualified Data.ByteString.Char8 as B8

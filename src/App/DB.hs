@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module DB where
+module App.DB where
 
 import Database.RocksDB.Base
 import Relude

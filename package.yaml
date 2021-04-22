@@ -25,6 +25,7 @@ dependencies:
 - relude
 - scotty
 - http-conduit
+- http-client
 - bytestring
 - mtl
 - transformers
@@ -37,6 +38,8 @@ dependencies:
 - websockets
 - async
 - rocksdb-haskell
+- aeson
+- vector
 
 library:
   source-dirs: src
