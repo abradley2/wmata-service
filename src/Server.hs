@@ -16,6 +16,7 @@ import Network.HTTP.Types.Status
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Handler.WebSockets
+import qualified Network.Wai.Middleware.Static as Static
 import Network.WebSockets
 import Relude
 import qualified App.Routes.Predictions as Predictions
@@ -68,6 +69,8 @@ pollInterval = do
 
 apiApp :: IO Application
 apiApp = Scotty.scottyApp $ do
+  middleware $ Static.staticPolicy (Static.addBase "client/public") 
+
   get "/api/stations" $ do
     res <- withEnv Stations.fetchStations
     html $ show res

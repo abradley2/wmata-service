@@ -2,3 +2,6 @@
 *~
 .env
 __*
+elm-stuff/
+node_modules/
+dist/

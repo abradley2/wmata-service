@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1b377e42c07dea69bda06a40584cd051f037a89fbf6c2ff57a80bbffb77343b3
+-- hash: 1f1197e48f5bea73bde42bb7a6078f3976965b0534fd5d4be736e64cd994ab4f
 
 name:           metro-backend
 version:        0.1.0.0
@@ -54,6 +54,7 @@ library
     , transformers
     , vector
     , wai
+    , wai-middleware-static
     , wai-websockets
     , warp
     , websockets
@@ -85,6 +86,7 @@ executable metro-backend-exe
     , transformers
     , vector
     , wai
+    , wai-middleware-static
     , wai-websockets
     , warp
     , websockets
@@ -117,6 +119,7 @@ test-suite metro-backend-test
     , transformers
     , vector
     , wai
+    , wai-middleware-static
     , wai-websockets
     , warp
     , websockets
