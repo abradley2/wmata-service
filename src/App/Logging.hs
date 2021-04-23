@@ -9,6 +9,7 @@ import Relude
 import Network.HTTP.Client
 import Control.Exception
 
+logLeft :: (LogStr -> IO ()) -> Either String a -> MaybeT IO a
 logLeft logger = logIOLeft logger . return 
 
 logIOLeft :: (LogStr -> IO ()) -> IO (Either String a)-> MaybeT IO a
