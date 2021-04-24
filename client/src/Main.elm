@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser exposing (element)
 import Element as El
@@ -6,7 +6,12 @@ import Element.Background as Bg
 import Element.Border as Bd
 import Element.Events as Ev
 import Html as H
+import Http
+import Json.Decode as D
 import Platform exposing (Program)
+
+
+port receivePredictions : (D.Value -> msg) -> Sub msg
 
 
 type alias Flags =
@@ -14,7 +19,8 @@ type alias Flags =
 
 
 type Msg
-    = NoOp
+    = ReceivedStations (Result Http.Error D.Value)
+    | ReceivedPredictions D.Value
 
 
 type alias Model =
@@ -28,7 +34,19 @@ update msg model =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( {}, Cmd.none )
+    ( {}
+    , Http.request
+        { method = "GET"
+        , body = Http.emptyBody
+        , timeout = Just <| 1000 * 5
+        , headers =
+            [ Http.header "Accept" "application/json"
+            ]
+        , tracker = Nothing
+        , url = "/api/stations"
+        , expect = Http.expectJson ReceivedStations D.value
+        }
+    )
 
 
 view : Model -> H.Html Msg
@@ -37,8 +55,8 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions _ =
+    receivePredictions ReceivedPredictions
 
 
 main : Program Flags Model Msg

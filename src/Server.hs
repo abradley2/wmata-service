@@ -2,9 +2,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Server
-  ( run,
-  )
-where
+  ( run
+  ) where
 
 import App.DB
 import qualified App.Routes.Predictions as Predictions
@@ -26,8 +25,7 @@ import System.Environment
 import Web.Scotty as Scotty
 
 getApiKey :: MonadIO m => m B8.ByteString
-getApiKey =
-  liftIO $ B8.pack <$> getEnv "API_KEY"
+getApiKey = liftIO $ B8.pack <$> getEnv "API_KEY"
 
 withEnv :: MonadIO m => (B8.ByteString -> m a) -> m a
 withEnv action = do
@@ -47,7 +45,10 @@ wsApp db pendingConnection = do
 serveConnection :: MonadIO m => DataBase -> Connection -> m ()
 serveConnection db con = do
   val <- retrieveLatestPredictions db
-  liftIO $ sendDataMessage con $ Text (show val) Nothing
+  liftIO $
+    sendDataMessage
+      con
+      (Text (maybe "" LazyB8.fromStrict val) Nothing)
   liftIO socketInterval
   serveConnection db con
 
@@ -80,28 +81,31 @@ spaMiddleware scottyApp req respond =
           False
           (B8.isInfixOf "text/html" . snd)
           (find ((==) hAccept . fst) $ requestHeaders req)
-   in scottyApp (if isDocumentRequest then newReq else req) respond
+   in scottyApp
+        (if isDocumentRequest
+           then newReq
+           else req)
+        respond
   where
     requestHeaders = Network.Wai.requestHeaders
 
 apiApp :: IO Application
-apiApp = Scotty.scottyApp $ do
-  middleware spaMiddleware
-  middleware $ Static.staticPolicy (Static.addBase "client/dist")
-
-  get "/api/stations" $ do
-    res <- withEnv Stations.fetchStations
-    html $ show res
-
-  get "/api/predictions" $ do
-    res <- withEnv Predictions.fetchPredictions
-    case res of
-      Nothing -> do
-        status status500
-        text "Internal Server Error"
-      Just jsonVal -> do
-        status status200
-        json jsonVal
+apiApp =
+  Scotty.scottyApp $ do
+    middleware spaMiddleware
+    middleware $ Static.staticPolicy (Static.addBase "client/dist")
+    get "/api/stations" $ do
+      res <- withEnv Stations.fetchStations
+      html $ show res
+    get "/api/predictions" $ do
+      res <- withEnv Predictions.fetchPredictions
+      case res of
+        Nothing -> do
+          status status500
+          text "Internal Server Error"
+        Just jsonVal -> do
+          status status200
+          json jsonVal
   where
     json = Scotty.json
     get = Scotty.get

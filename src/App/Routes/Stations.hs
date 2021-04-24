@@ -4,10 +4,61 @@
 module App.Routes.Stations where
 
 import Control.Monad.Logger
+import Data.Aeson
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text.Lazy as TextLazy
 import Network.HTTP.Simple
 import Relude
+
+newtype ApiResponse = ApiResponse
+  { stations :: [Station]
+  }
+
+instance FromJSON ApiResponse where
+  parseJSON = withObject "ApiResponse" $ \val ->
+    ApiResponse <$> val .: "Stations"
+
+instance ToJSON ApiResponse where
+  toJSON val =
+    object
+      [ "stations" .= stations val
+      ]
+
+data Station = Station
+  { code :: String,
+    coStation1 :: Maybe String,
+    coStation2 :: Maybe String,
+    lineCode1 :: String,
+    lineCode2 :: Maybe String,
+    lineCode3 :: Maybe String,
+    longitude :: Float,
+    latitude :: Float
+  }
+
+instance ToJSON Station where
+  toJSON val =
+    object
+      [ "code" .= code val,
+        "coStation1" .= coStation1 val,
+        "coStation2" .= coStation2 val,
+        "lineCode1" .= lineCode1 val,
+        "lineCode2" .= lineCode2 val,
+        "lineCode3" .= lineCode3 val,
+        "longitude" .= longitude val,
+        "latitude" .= latitude val
+      ]
+
+instance FromJSON Station where
+  parseJSON = withObject "Prediction" $ \val ->
+    Station
+      <$> val .: "Code"
+      <*> val .:? "StationTogether1"
+      <*> val .:? "StationTogether2"
+      <*> val .: "LineCode1"
+      <*> val .:? "LineCode2"
+      <*> val .:? "LineCode3"
+      <*> val .: "Lon"
+      <*> val .: "Lat"
 
 logSource :: LogSource
 logSource = "Routes.Stations"
