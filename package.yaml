@@ -26,11 +26,9 @@ dependencies:
 - scotty
 - http-conduit
 - http-client
-- bytestring
-- mtl
-- transformers
-- monad-logger
 - http-types
+- bytestring
+- monad-logger
 - case-insensitive
 - wai
 - warp
@@ -39,7 +37,6 @@ dependencies:
 - async
 - rocksdb-haskell
 - aeson
-- vector
 - wai-middleware-static
 
 library:

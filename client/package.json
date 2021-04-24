@@ -12,5 +12,10 @@
   "license": "ISC",
   "dependencies": {
     "parcel": "^2.0.0-beta.2"
+  },
+  "devDependencies": {
+    "@parcel/transformer-elm": "2.0.0-beta.2",
+    "elm": "^0.19.1-5",
+    "standard": "^16.0.3"
   }
 }
