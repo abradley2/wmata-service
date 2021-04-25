@@ -96,7 +96,13 @@ apiApp =
     middleware $ Static.staticPolicy (Static.addBase "client/dist")
     get "/api/stations" $ do
       res <- withEnv Stations.fetchStations
-      html $ show res
+      case res of 
+        Nothing -> do
+          status status500
+          text "Internal Server Error"
+        Just jsonVal -> do
+          status status200
+          Scotty.json jsonVal
     get "/api/predictions" $ do
       res <- withEnv Predictions.fetchPredictions
       case res of
@@ -105,9 +111,8 @@ apiApp =
           text "Internal Server Error"
         Just jsonVal -> do
           status status200
-          json jsonVal
+          Scotty.json jsonVal
   where
-    json = Scotty.json
     get = Scotty.get
 
 app :: IO Application

@@ -1,64 +1,19 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module App.Routes.Stations where
 
+import App.Logging
 import Control.Monad.Logger
 import Data.Aeson
+import Data.Aeson.Types
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy.Char8 as LazyB8
 import qualified Data.Text.Lazy as TextLazy
+import qualified WMATA.Stations
 import Network.HTTP.Simple
 import Relude
-
-newtype ApiResponse = ApiResponse
-  { stations :: [Station]
-  }
-
-instance FromJSON ApiResponse where
-  parseJSON = withObject "ApiResponse" $ \val ->
-    ApiResponse <$> val .: "Stations"
-
-instance ToJSON ApiResponse where
-  toJSON val =
-    object
-      [ "stations" .= stations val
-      ]
-
-data Station = Station
-  { code :: String,
-    coStation1 :: Maybe String,
-    coStation2 :: Maybe String,
-    lineCode1 :: String,
-    lineCode2 :: Maybe String,
-    lineCode3 :: Maybe String,
-    longitude :: Float,
-    latitude :: Float
-  }
-
-instance ToJSON Station where
-  toJSON val =
-    object
-      [ "code" .= code val,
-        "coStation1" .= coStation1 val,
-        "coStation2" .= coStation2 val,
-        "lineCode1" .= lineCode1 val,
-        "lineCode2" .= lineCode2 val,
-        "lineCode3" .= lineCode3 val,
-        "longitude" .= longitude val,
-        "latitude" .= latitude val
-      ]
-
-instance FromJSON Station where
-  parseJSON = withObject "Prediction" $ \val ->
-    Station
-      <$> val .: "Code"
-      <*> val .:? "StationTogether1"
-      <*> val .:? "StationTogether2"
-      <*> val .: "LineCode1"
-      <*> val .:? "LineCode2"
-      <*> val .:? "LineCode3"
-      <*> val .: "Lon"
-      <*> val .: "Lat"
 
 logSource :: LogSource
 logSource = "Routes.Stations"
@@ -70,15 +25,26 @@ stationsRequest apiKey = do
     addRequestHeader "Accept" "application/json" $
       addRequestHeader "api_key" apiKey req
 
-fetchStations_ :: B8.ByteString -> LoggingT IO B8.ByteString
+fetchStations_ :: B8.ByteString -> LoggingT (MaybeT IO) WMATA.Stations.ApiResponse
 fetchStations_ apiKey =
   LoggingT $ \logger -> do
-    logger defaultLoc logSource LevelInfo "Creating stationsRequest"
-    req <- stationsRequest apiKey
-    logger defaultLoc logSource LevelInfo "Start fetchStations"
-    res <- httpBS req
-    logger defaultLoc logSource LevelInfo "Done stations"
-    return $ getResponseBody res
+    let logErr = logger defaultLoc logSource LevelError
+    let logInf = logger defaultLoc logSource LevelInfo
 
-fetchStations :: MonadIO m => B8.ByteString -> m B8.ByteString
-fetchStations apiKey = liftIO $ runStdoutLoggingT (fetchStations_ apiKey)
+    lift $ logInf "Creating stationsRequest"
+    req <- lift $ stationsRequest apiKey
+    lift $ logInf "Start fetchStations"
+    res <-
+      catchAndLogHttpException
+        (logErr . (<>) "Error fecthing stations: ")
+        (httpBS req)
+    lift $ logger defaultLoc logSource LevelInfo "Done stations"
+    logLeft
+      (logErr . (<>) "Error decoding api response: ")
+      (decodeApiResponse $ getResponseBody res)
+  where
+    decodeApiResponse :: B8.ByteString -> Either String WMATA.Stations.ApiResponse
+    decodeApiResponse = eitherDecode . LazyB8.fromStrict
+
+fetchStations :: MonadIO m => B8.ByteString -> m (Maybe WMATA.Stations.ApiResponse)
+fetchStations apiKey = liftIO . runMaybeT . runStdoutLoggingT $ fetchStations_ apiKey

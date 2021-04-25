@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -6,58 +7,13 @@ module App.Routes.Predictions where
 import App.Logging
 import Control.Monad.Logger
 import Data.Aeson
+import qualified WMATA.Predictions
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LazyB8
 import qualified Data.Text.Lazy as TextLazy
 import Network.HTTP.Client
 import Network.HTTP.Simple
 import Relude
-
-newtype ApiResponse = ApiResponse
-  { trains :: [Prediction]
-  }
-  deriving (Show)
-
-instance ToJSON ApiResponse where
-  toJSON val =
-    object
-      [ "trains" .= trains val
-      ]
-
-instance FromJSON ApiResponse where
-  parseJSON = withObject "Response" $ \val ->
-    ApiResponse <$> val .: "Trains"
-
-data Prediction = Prediction
-  { car :: Maybe String,
-    destination :: Maybe String,
-    destinationName :: Maybe String,
-    locationCode :: Maybe String,
-    locationName :: Maybe String,
-    minutes :: Maybe String
-  }
-  deriving (Show)
-
-instance ToJSON Prediction where
-  toJSON val =
-    object
-      [ "car" .= car val,
-        "destination" .= destination val,
-        "destinationName" .= destinationName val,
-        "locationCode" .= locationCode val,
-        "locationName" .= locationName val,
-        "minutes" .= minutes val
-      ]
-
-instance FromJSON Prediction where
-  parseJSON = withObject "Prediction" $ \val ->
-    Prediction
-      <$> val .:? "Car"
-      <*> val .:? "Destination"
-      <*> val .:? "DestinationName"
-      <*> val .:? "LocationCode"
-      <*> val .:? "LocationName"
-      <*> val .:? "Min"
 
 logSource :: LogSource
 logSource = "Routes.Predictions"
@@ -69,7 +25,7 @@ predictionsRequest apiKey = do
     addRequestHeader "Accept" "application/json" $
       addRequestHeader "api_key" apiKey req
 
-fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) ApiResponse
+fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) WMATA.Predictions.ApiResponse
 fetchPredictions_ apiKey =
   LoggingT $
     \logger -> do
@@ -88,9 +44,9 @@ fetchPredictions_ apiKey =
         (logErr . (<>) "Error decoding api results: ")
         $ decodeApiResponse (getResponseBody res)
   where
-    decodeApiResponse :: B8.ByteString -> Either String ApiResponse
+    decodeApiResponse :: B8.ByteString -> Either String WMATA.Predictions.ApiResponse
     decodeApiResponse = eitherDecode . LazyB8.fromStrict
 
-fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe ApiResponse)
+fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe WMATA.Predictions.ApiResponse)
 fetchPredictions apiKey =
-  liftIO $ runMaybeT $ runStdoutLoggingT (fetchPredictions_ apiKey)
+  liftIO . runMaybeT . runStdoutLoggingT $ fetchPredictions_ apiKey
