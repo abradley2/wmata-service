@@ -1,27 +1,28 @@
-import { Elm } from "./Main.elm"
+import { Elm } from './Main.elm'
 
 const dev = window.location.pathname.includes('localhost')
 
+const app = Elm.Main.init({
+  node: document.getElementById('app'),
+  flags: { dev }
+})
+
 function listen () {
-  const ws = new WebSocket(`ws://${window.location.host}`)
+  let timeout
+  const ws = new window.WebSocket(`ws://${window.location.host}`)
   ws.onmessage = function (ev) {
-    console.log(ev.data)
     if (!ev.data) return
-    console.log(JSON.parse(ev.data))
+    if (timeout) window.clearTimeout(timeout)
+    window.setTimeout(function () {
+      ws.close()
+      setTimeout(listen, 0)
+    }, 10 * 1000)
+    app.ports.receivePredictions.send(ev.data)
   }
 
-  ws.onerror = function () {
-    ws.close()
-  }
+  ws.onerror = function () { ws.close() }
 
-  ws.onclose = function () {
-    setTimeout(listen, 5000)
-  }
+  ws.onclose = function () { setTimeout(listen, 5000) }
 }
 
 listen()
-
-Elm.Main.init({
-  node: document.getElementById('app'),
-  flags: {}
-})
