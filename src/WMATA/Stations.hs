@@ -26,7 +26,7 @@ instance ToJSON ApiResponse where
 
 data Station = Station
   { name :: String,
-      code :: String,
+    code :: String,
     coStation1 :: Maybe String,
     coStation2 :: Maybe String,
     lineCode1 :: String,
@@ -40,7 +40,7 @@ instance ToJSON Station where
   toJSON val =
     object
       [ "name" .= name val,
-           "code" .= code val,
+        "code" .= code val,
         "coStation1" .= coStation1 val,
         "coStation2" .= coStation2 val,
         "lineCode1" .= lineCode1 val,
