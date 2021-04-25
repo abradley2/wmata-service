@@ -15,26 +15,27 @@ import Network.HTTP.Simple
 import Relude
 import WMATA.Data
 import qualified WMATA.Predictions
+import App.Env
 
 logSource :: LogSource
 logSource = "Routes.Predictions"
 
-predictionsRequest :: B8.ByteString -> IO Request
-predictionsRequest apiKey = do
+predictionsRequest :: Env -> IO Request
+predictionsRequest env = do
   req <- parseRequest "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/All"
   return $
     addRequestHeader "Accept" "application/json" $
-      addRequestHeader "api_key" apiKey req
+      addRequestHeader "api_key" (apiKey env) req
 
-fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) [WMATA.Predictions.Prediction]
-fetchPredictions_ apiKey =
+fetchPredictions_ :: Env -> LoggingT (MaybeT IO) [WMATA.Predictions.Prediction]
+fetchPredictions_ env =
   LoggingT $
     \logger -> do
       let logErr = logger defaultLoc logSource LevelError
       let logInf = logger defaultLoc logSource LevelInfo
 
       lift $ logInf "Initializing predictionsRequest"
-      req <- lift $ predictionsRequest apiKey
+      req <- lift $ predictionsRequest env
       lift $ logInf "Start fetchPredications"
       res <-
         catchAndLogHttpException
@@ -52,6 +53,6 @@ fetchPredictions_ apiKey =
   where
     decodeApiResponse = fmap WMATA.Predictions.results . eitherDecode . LazyB8.fromStrict
 
-fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe [WMATA.Predictions.Prediction])
-fetchPredictions apiKey =
-  liftIO . runMaybeT . runStdoutLoggingT $ fetchPredictions_ apiKey
+fetchPredictions :: MonadIO m => Env -> m (Maybe [WMATA.Predictions.Prediction])
+fetchPredictions env =
+  liftIO . runMaybeT . runStdoutLoggingT $ fetchPredictions_ env

@@ -15,25 +15,26 @@ import Network.HTTP.Simple
 import Relude
 import WMATA.Data
 import qualified WMATA.Stations
+import App.Env
 
 logSource :: LogSource
 logSource = "Routes.Stations"
 
-stationsRequest :: B8.ByteString -> IO Request
-stationsRequest apiKey = do
+stationsRequest :: Env -> IO Request
+stationsRequest env = do
   req <- parseRequest "https://api.wmata.com/Rail.svc/json/jStations"
   return $
     addRequestHeader "Accept" "application/json" $
-      addRequestHeader "api_key" apiKey req
+      addRequestHeader "api_key" (apiKey env) req
 
-fetchStations_ :: B8.ByteString -> LoggingT (MaybeT IO) [WMATA.Stations.Station]
-fetchStations_ apiKey =
+fetchStations_ :: Env -> LoggingT (MaybeT IO) [WMATA.Stations.Station]
+fetchStations_ env =
   LoggingT $ \logger -> do
     let logErr = logger defaultLoc logSource LevelError
     let logInf = logger defaultLoc logSource LevelInfo
 
     lift $ logInf "Creating stationsRequest"
-    req <- lift $ stationsRequest apiKey
+    req <- lift $ stationsRequest env
     lift $ logInf "Start fetchStations"
     res <-
       catchAndLogHttpException
@@ -51,5 +52,5 @@ fetchStations_ apiKey =
   where
     decodeApiResponse = fmap WMATA.Stations.results . eitherDecode . LazyB8.fromStrict
 
-fetchStations :: MonadIO m => B8.ByteString -> m (Maybe [WMATA.Stations.Station])
-fetchStations apiKey = liftIO . runMaybeT . runStdoutLoggingT $ fetchStations_ apiKey
+fetchStations :: MonadIO m => Env -> m (Maybe [WMATA.Stations.Station])
+fetchStations env = liftIO . runMaybeT . runStdoutLoggingT $ fetchStations_ env

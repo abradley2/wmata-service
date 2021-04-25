@@ -2,10 +2,12 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Server
-  ( run
-  ) where
+  ( run,
+  )
+where
 
 import App.DB
+import App.Env
 import qualified App.Routes.Predictions as Predictions
 import qualified App.Routes.Stations as Stations
 import Control.Concurrent
@@ -23,14 +25,6 @@ import Network.WebSockets
 import Relude
 import System.Environment
 import Web.Scotty as Scotty
-
-getApiKey :: MonadIO m => m B8.ByteString
-getApiKey = liftIO $ B8.pack <$> getEnv "API_KEY"
-
-withEnv :: MonadIO m => (B8.ByteString -> m a) -> m a
-withEnv action = do
-  apiKey <- liftIO getApiKey
-  action apiKey
 
 -- | wsApp
 -- Accepts all incoming websocket connections. When
@@ -57,15 +51,15 @@ serveConnection db con = do
 -- query the WMATA API for the latest predictions and
 -- store them in the Database to be distributed to the
 -- websocket connections
-pollPredictions :: MonadIO m => DataBase -> B8.ByteString -> m ()
-pollPredictions db apiKey = do
-  predictions <- Predictions.fetchPredictions apiKey
+pollPredictions :: MonadIO m => DataBase -> Env -> m ()
+pollPredictions db env = do
+  predictions <- Predictions.fetchPredictions env
   maybe
     (return ())
     (storeLatestPredictions db . LazyB8.toStrict . encode)
     predictions
   liftIO pollInterval
-  pollPredictions db apiKey
+  pollPredictions db env
   where
     encode = Data.Aeson.encode
 
@@ -82,9 +76,10 @@ spaMiddleware scottyApp req respond =
           (B8.isInfixOf "text/html" . snd)
           (find ((==) hAccept . fst) $ requestHeaders req)
    in scottyApp
-        (if isDocumentRequest
-           then newReq
-           else req)
+        ( if isDocumentRequest
+            then newReq
+            else req
+        )
         respond
   where
     requestHeaders = Network.Wai.requestHeaders
@@ -96,7 +91,7 @@ apiApp =
     middleware $ Static.staticPolicy (Static.addBase "client/dist")
     get "/api/stations" $ do
       res <- withEnv Stations.fetchStations
-      case res of 
+      case res of
         Nothing -> do
           status status500
           text "Internal Server Error"
