@@ -13,7 +13,7 @@ function listen () {
   ws.onmessage = function (ev) {
     if (!ev.data) return
     if (timeout) window.clearTimeout(timeout)
-    window.setTimeout(function () {
+    timeout = window.setTimeout(function () {
       ws.close()
       setTimeout(listen, 0)
     }, 10 * 1000)
