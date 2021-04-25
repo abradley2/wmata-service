@@ -11,9 +11,10 @@ import Data.Aeson.Types
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LazyB8
 import qualified Data.Text.Lazy as TextLazy
-import qualified WMATA.Stations
 import Network.HTTP.Simple
 import Relude
+import WMATA.Data
+import qualified WMATA.Stations
 
 logSource :: LogSource
 logSource = "Routes.Stations"
@@ -25,7 +26,7 @@ stationsRequest apiKey = do
     addRequestHeader "Accept" "application/json" $
       addRequestHeader "api_key" apiKey req
 
-fetchStations_ :: B8.ByteString -> LoggingT (MaybeT IO) WMATA.Stations.ApiResponse
+fetchStations_ :: B8.ByteString -> LoggingT (MaybeT IO) [WMATA.Stations.Station]
 fetchStations_ apiKey =
   LoggingT $ \logger -> do
     let logErr = logger defaultLoc logSource LevelError
@@ -39,12 +40,16 @@ fetchStations_ apiKey =
         (logErr . (<>) "Error fecthing stations: ")
         (httpBS req)
     lift $ logger defaultLoc logSource LevelInfo "Done stations"
+    results <-
+      logLeft
+        (logErr . (<>) "Error decoding api response: ")
+        (decodeApiResponse $ getResponseBody res)
     logLeft
-      (logErr . (<>) "Error decoding api response: ")
-      (decodeApiResponse $ getResponseBody res)
+      (logErr . (<>) "Malformed results found: ")
+      $ sequence results
+    return $ rights results
   where
-    decodeApiResponse :: B8.ByteString -> Either String WMATA.Stations.ApiResponse
-    decodeApiResponse = eitherDecode . LazyB8.fromStrict
+    decodeApiResponse = fmap WMATA.Stations.results . eitherDecode . LazyB8.fromStrict
 
-fetchStations :: MonadIO m => B8.ByteString -> m (Maybe WMATA.Stations.ApiResponse)
+fetchStations :: MonadIO m => B8.ByteString -> m (Maybe [WMATA.Stations.Station])
 fetchStations apiKey = liftIO . runMaybeT . runStdoutLoggingT $ fetchStations_ apiKey

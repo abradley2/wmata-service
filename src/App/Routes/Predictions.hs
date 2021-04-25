@@ -7,13 +7,14 @@ module App.Routes.Predictions where
 import App.Logging
 import Control.Monad.Logger
 import Data.Aeson
-import qualified WMATA.Predictions
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LazyB8
 import qualified Data.Text.Lazy as TextLazy
 import Network.HTTP.Client
 import Network.HTTP.Simple
 import Relude
+import WMATA.Data
+import qualified WMATA.Predictions
 
 logSource :: LogSource
 logSource = "Routes.Predictions"
@@ -25,7 +26,7 @@ predictionsRequest apiKey = do
     addRequestHeader "Accept" "application/json" $
       addRequestHeader "api_key" apiKey req
 
-fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) WMATA.Predictions.ApiResponse
+fetchPredictions_ :: B8.ByteString -> LoggingT (MaybeT IO) [WMATA.Predictions.Prediction]
 fetchPredictions_ apiKey =
   LoggingT $
     \logger -> do
@@ -40,13 +41,17 @@ fetchPredictions_ apiKey =
           (logErr . (<>) "Error fetching predictions: ")
           $ httpBS req
       lift $ logInf "Finished fetchPredictions"
+      results <-
+        logLeft
+          (logErr . (<>) "Error decoding api results: ")
+          $ decodeApiResponse (getResponseBody res)
       logLeft
-        (logErr . (<>) "Error decoding api results: ")
-        $ decodeApiResponse (getResponseBody res)
+        (logErr . (<>) "Malformed results found: ")
+        $ sequence results
+      return $ rights results
   where
-    decodeApiResponse :: B8.ByteString -> Either String WMATA.Predictions.ApiResponse
-    decodeApiResponse = eitherDecode . LazyB8.fromStrict
+    decodeApiResponse = fmap WMATA.Predictions.results . eitherDecode . LazyB8.fromStrict
 
-fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe WMATA.Predictions.ApiResponse)
+fetchPredictions :: MonadIO m => B8.ByteString -> m (Maybe [WMATA.Predictions.Prediction])
 fetchPredictions apiKey =
   liftIO . runMaybeT . runStdoutLoggingT $ fetchPredictions_ apiKey

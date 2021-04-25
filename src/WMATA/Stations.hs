@@ -7,10 +7,13 @@ module WMATA.Stations where
 import Data.Aeson
 import Data.Aeson.Types
 import Relude
+import WMATA.Data
 
 newtype ApiResponse = ApiResponse
   { stations :: [ParsedStation]
   }
+
+results = fmap resultToEither . fmap parsedStation . stations
 
 newtype ParsedStation = ParsedStation {parsedStation :: Result Station}
 

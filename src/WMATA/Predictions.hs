@@ -4,6 +4,8 @@
 
 module WMATA.Predictions where
 
+import WMATA.Data
+
 import Data.Aeson
 import Data.Aeson.Types
 import Relude
@@ -15,6 +17,8 @@ newtype ApiResponse = ApiResponse
 
 newtype ParsedPrediction = ParsedPrediction {parsedPrediction :: Result Prediction}
   deriving (Show)
+
+results = fmap resultToEither . fmap parsedPrediction . trains
 
 instance ToJSON ApiResponse where
   toJSON val =

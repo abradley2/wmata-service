@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c3a4bb23c3b0666f10b30f237de592342e9d899adf3ecaa95fd2aa6cf8416c3
+-- hash: 31c502537ee6e5250283c75ecf9e083c580f72aedb53ed324d8ee6c717b2c296
 
 name:           metro-backend
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       App.Routes.Predictions
       App.Routes.Stations
       Server
+      WMATA.Data
       WMATA.Predictions
       WMATA.Stations
   other-modules:
