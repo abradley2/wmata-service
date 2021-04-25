@@ -69,4 +69,4 @@ instance FromJSON Prediction where
       <*> val .: "Min"
 
 instance FromJSON ParsedPrediction where
-  parseJSON = return . ParsedPrediction . parse parseJSON
+  parseJSON = return . ParsedPrediction . enhancedParse parseJSON

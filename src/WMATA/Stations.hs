@@ -66,6 +66,9 @@ stationParser val =
     <*> val .: "Lon"
     <*> val .: "Lat"
 
+instance FromJSON Station where
+    parseJSON = withObject "Station" stationParser
+
 instance ToJSON ParsedStation where
   toJSON =
     \case
@@ -75,4 +78,5 @@ instance ToJSON ParsedStation where
 
 instance FromJSON ParsedStation where
   parseJSON =
-    return . ParsedStation . parse (withObject "Prediction" stationParser)
+    return . ParsedStation . enhancedParse parseJSON
+
