@@ -117,9 +117,7 @@ app = do
   websocketsOr defaultConnectionOptions (wsApp db) <$> apiApp
 
 run :: IO ()
-run = do
-  getApiKey
-  app >>= Warp.run 8000
+run = app >>= Warp.run 8000
 
 socketInterval :: IO ()
 socketInterval = do
