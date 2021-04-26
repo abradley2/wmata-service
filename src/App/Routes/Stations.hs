@@ -20,37 +20,33 @@ import App.Env
 logSource :: LogSource
 logSource = "Routes.Stations"
 
-stationsRequest :: Env -> IO Request
-stationsRequest env = do
-  req <- parseRequest "https://api.wmata.com/Rail.svc/json/jStations"
-  return $
-    addRequestHeader "Accept" "application/json" $
-      addRequestHeader "api_key" (apiKey env) req
+stationsRequest :: MonadIO m => Env -> m Request
+stationsRequest env = liftIO
+  (parseRequest "https://api.wmata.com/Rail.svc/json/jStations")
+    <&> addRequestHeader "api_key" (apiKey env)
+      . addRequestHeader "Accept" "application/json"
 
 fetchStations_ :: Env -> LoggingT (MaybeT IO) [WMATA.Stations.Station]
 fetchStations_ env =
   LoggingT $ \logger -> do
     let logErr = logger defaultLoc logSource LevelError
-    let logInf = logger defaultLoc logSource LevelInfo
+    let logInf = lift . logger defaultLoc logSource LevelInfo
+    let ll msg = logLeft (logErr . (msg <>))
 
-    lift $ logInf "Creating stationsRequest"
-    req <- lift $ stationsRequest env
-    lift $ logInf "Start fetchStations"
+    logInf "Creating stationsRequest"
+    req <- stationsRequest env
+    logInf "Start fetchStations"
     res <-
       catchAndLogHttpException
-        (logErr . (<>) "Error fecthing stations: ")
+        (logErr . ("Error fecthing stations: " <>))
         (httpBS req)
-    lift $ logger defaultLoc logSource LevelInfo "Done stations"
+    logInf "Done stations"
     results <-
-      logLeft
-        (logErr . (<>) "Error decoding api response: ")
-        (decodeApiResponse $ getResponseBody res)
-    logLeft
-      (logErr . (<>) "Malformed results found: ")
-      $ sequence results
-    return $ rights results
+      ll "Error decoding api response: " $ decodeApiResponse (getResponseBody res)
+    ll "Malformed results found: " $ sequence results
+    pure $ rights results
   where
     decodeApiResponse = fmap WMATA.Stations.results . eitherDecode . LazyB8.fromStrict
 
 fetchStations :: MonadIO m => Env -> m (Maybe [WMATA.Stations.Station])
-fetchStations env = liftIO . runMaybeT . runStdoutLoggingT $ fetchStations_ env
+fetchStations = liftIO . runMaybeT . runStdoutLoggingT . fetchStations_

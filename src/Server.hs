@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -32,9 +33,8 @@ import Web.Scotty as Scotty
 -- rail predictions from the database and send them
 -- immediately, and then once after every "socketInterval"
 wsApp :: DataBase -> ServerApp
-wsApp db pendingConnection = do
-  con <- liftIO $ acceptRequest pendingConnection
-  serveConnection db con
+wsApp db pendingConnection =
+  serveConnection db =<< liftIO (acceptRequest pendingConnection)
 
 serveConnection :: MonadIO m => DataBase -> Connection -> m ()
 serveConnection db con = do
@@ -55,7 +55,7 @@ pollPredictions :: MonadIO m => DataBase -> Env -> m ()
 pollPredictions db env = do
   predictions <- Predictions.fetchPredictions env
   maybe
-    (return ())
+    (pure ())
     (storeLatestPredictions db . LazyB8.toStrict . encode)
     predictions
   liftIO pollInterval
@@ -68,45 +68,37 @@ pollPredictions db env = do
 -- request the accepts "text/html" to point to "index.html".
 -- Enables SPA navigation for the frontend.
 spaMiddleware :: Application -> Application
-spaMiddleware scottyApp req respond =
-  let newReq = req {pathInfo = ["index.html"]}
-      isDocumentRequest =
-        maybe
-          False
-          (B8.isInfixOf "text/html" . snd)
-          (find ((==) hAccept . fst) $ requestHeaders req)
-   in scottyApp
-        ( if isDocumentRequest
-            then newReq
-            else req
-        )
-        respond
+spaMiddleware scottyApp req respond = scottyApp
+  ( if isDocumentRequest then newReq else req )
+  respond
   where
     requestHeaders = Network.Wai.requestHeaders
+    newReq = req {pathInfo = ["index.html"]}
+    isDocumentRequest = maybe
+      False
+      (B8.isInfixOf "text/html" . snd)
+      (find ((==) hAccept . fst) $ requestHeaders req)
 
 apiApp :: IO Application
-apiApp =
-  Scotty.scottyApp $ do
-    middleware spaMiddleware
-    middleware $ Static.staticPolicy (Static.addBase "client/dist")
-    get "/api/stations" $ do
-      res <- withEnv Stations.fetchStations
-      case res of
-        Nothing -> do
-          status status500
-          text "Internal Server Error"
-        Just jsonVal -> do
-          status status200
-          Scotty.json jsonVal
-    get "/api/predictions" $ do
-      res <- withEnv Predictions.fetchPredictions
-      case res of
-        Nothing -> do
-          status status500
-          text "Internal Server Error"
-        Just jsonVal -> do
-          status status200
-          Scotty.json jsonVal
+apiApp = Scotty.scottyApp $ do
+  middleware spaMiddleware
+  middleware $ Static.staticPolicy (Static.addBase "client/dist")
+  get "/api/stations" $ do
+    withEnv Stations.fetchStations >>= \case
+      Nothing -> do
+        status status500
+        text "Internal Server Error"
+      Just jsonVal -> do
+        status status200
+        Scotty.json jsonVal
+  get "/api/predictions" $ do
+    withEnv Predictions.fetchPredictions >>= \case
+      Nothing -> do
+        status status500
+        text "Internal Server Error"
+      Just jsonVal -> do
+        status status200
+        Scotty.json jsonVal
   where
     get = Scotty.get
 
@@ -117,14 +109,10 @@ app = do
   websocketsOr defaultConnectionOptions (wsApp db) <$> apiApp
 
 run :: IO ()
-run = app >>= Warp.run 8000
+run = Warp.run 8000 =<< app
 
 socketInterval :: IO ()
-socketInterval = do
-  threadDelay $ 1000000 * 4
-  return ()
+socketInterval = threadDelay $ 1000000 * 4
 
 pollInterval :: IO ()
-pollInterval = do
-  threadDelay $ 1000000 * 15
-  return ()
+pollInterval = threadDelay $ 1000000 * 15
