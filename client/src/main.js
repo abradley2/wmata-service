@@ -16,7 +16,7 @@ function listen () {
     timeout = window.setTimeout(function () {
       ws.close()
       setTimeout(listen, 0)
-    }, 10 * 1000)
+    }, 8 * 1000)
     app.ports.receivePredictions.send(ev.data)
   }
 
