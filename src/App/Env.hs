@@ -13,6 +13,4 @@ getApiKey :: MonadIO m => m B8.ByteString
 getApiKey = liftIO $ B8.pack <$> getEnv "API_KEY"
 
 withEnv :: MonadIO m => (Env -> m a) -> m a
-withEnv action = do
-  env <- Env <$> getApiKey
-  action env
+withEnv = (Env <$> getApiKey >>=)
