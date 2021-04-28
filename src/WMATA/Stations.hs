@@ -13,7 +13,8 @@ newtype ApiResponse = ApiResponse
   { stations :: [ParsedStation]
   }
 
-results = fmap resultToEither . fmap parsedStation . stations
+results :: ApiResponse -> [Either String Station]
+results = fmap (resultToEither . parsedStation) . stations
 
 newtype ParsedStation = ParsedStation {parsedStation :: Result Station}
 
@@ -58,11 +59,11 @@ stationParser val =
   Station
     <$> val .: "Name"
     <*> val .: "Code"
-    <*> val .:? "StationTogether1"
-    <*> val .:? "StationTogether2"
+    <*> emptyToNothing (val .:? "StationTogether1")
+    <*> emptyToNothing (val .:? "StationTogether2")
     <*> val .: "LineCode1"
-    <*> val .:? "LineCode2"
-    <*> val .:? "LineCode3"
+    <*> emptyToNothing (val .:? "LineCode2")
+    <*> emptyToNothing (val .:? "LineCode3")
     <*> val .: "Lon"
     <*> val .: "Lat"
 

@@ -1,7 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module WMATA.Data where
 
 import Data.Aeson
 import Data.Aeson.Types
+import Relude
 
 resultToEither :: Result a -> Either String a
 resultToEither (Success a) = Right a
@@ -13,3 +18,9 @@ enhancedParse parseJson value =
    in case result of
         Success a -> Success a
         Error err -> Error (err <> ": " <> show value)
+
+
+emptyToNothing :: Parser (Maybe String) -> Parser (Maybe String) 
+emptyToNothing parser = parser >>= \case 
+  Just "" -> return Nothing
+  v -> return v

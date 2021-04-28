@@ -4,6 +4,7 @@
 
 module App.Routes.Stations where
 
+import App.Env
 import App.Logging
 import Control.Monad.Logger
 import Data.Aeson
@@ -15,14 +16,14 @@ import Network.HTTP.Simple
 import Relude
 import WMATA.Data
 import qualified WMATA.Stations
-import App.Env
 
 logSource :: LogSource
 logSource = "Routes.Stations"
 
 stationsRequest :: MonadIO m => Env -> m Request
-stationsRequest env = liftIO
-  (parseRequest "https://api.wmata.com/Rail.svc/json/jStations")
+stationsRequest env =
+  liftIO
+    (parseRequest "https://api.wmata.com/Rail.svc/json/jStations")
     <&> addRequestHeader "api_key" (apiKey env)
       . addRequestHeader "Accept" "application/json"
 
@@ -44,7 +45,7 @@ fetchStations_ env =
     results <-
       ll "Error decoding api response: " $ decodeApiResponse (getResponseBody res)
     ll "Malformed results found: " $ sequence results
-    pure $ rights results
+    return $ rights results
   where
     decodeApiResponse = fmap WMATA.Stations.results . eitherDecode . LazyB8.fromStrict
 

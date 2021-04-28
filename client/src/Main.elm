@@ -11,6 +11,8 @@ import Html as H
 import Http
 import Json.Decode as D
 import Platform exposing (Program)
+import RemoteData exposing (RemoteData(..))
+import Station exposing (Station)
 
 
 port receivePredictions : (D.Value -> msg) -> Sub msg
@@ -21,13 +23,14 @@ type alias Flags =
 
 
 type Msg
-    = ReceivedStations (Result Http.Error D.Value)
+    = ReceivedStations (Result Http.Error (List Station))
     | ReceivedPredictions D.Value
     | SearchTextChanged String
 
 
 type alias Model =
     { searchText : String
+    , stations : RemoteData Http.Error (List Station)
     }
 
 
@@ -41,6 +44,20 @@ update msg model =
             , Cmd.none
             )
 
+        ReceivedStations (Result.Err httpErr) ->
+            ( { model
+                | stations = Failure httpErr
+              }
+            , Cmd.none
+            )
+
+        ReceivedStations (Result.Ok stations) ->
+            ( { model
+                | stations = Success stations
+              }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -48,6 +65,7 @@ update msg model =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { searchText = ""
+      , stations = Loading
       }
     , Http.request
         { method = "GET"
@@ -58,7 +76,7 @@ init flags =
             ]
         , tracker = Nothing
         , url = "/api/stations"
-        , expect = Http.expectJson ReceivedStations D.value
+        , expect = Http.expectJson ReceivedStations (D.list Station.decodeStation)
         }
     )
 
@@ -68,41 +86,79 @@ view model =
     El.layoutWith
         { options =
             [ El.focusStyle
-                { borderColor = Just primary
+                { borderColor = Just secondary
                 , backgroundColor = Nothing
-                , shadow = Nothing
+                , shadow =
+                    Just
+                        { offset = ( 2, 2 )
+                        , blur = 10
+                        , size = 0
+                        , color = El.rgba255 0 0 0 0.5
+                        }
                 }
             ]
         }
-        [ Background.color backgroundColor
+        [ Background.color secondaryBackground
         , Font.color text
         ]
         (El.column
             [ El.width El.fill
             ]
-            [ El.row
-                [ El.centerX
-                , El.paddingXY 0 16
+            [ El.el
+                [ El.paddingXY 0 16
+                , El.width El.fill
+                , Background.color primaryBackground
                 ]
-                [ Input.text
-                    [ Background.color overlay1
-                    , Border.color overlay3
-                    , Border.rounded 99999
+                (searchInput model.searchText)
+            , El.row
+                [ El.width El.fill
+                , El.inFront <| El.column [] []
+                ]
+                [ El.column
+                    [ El.centerX
                     ]
-                    { label =
-                        Input.labelBelow
-                            [ El.paddingEach { edges | left = 16, top = 4 }
-
-                            ]
-                        <|
-                            El.text "hi"
-                    , onChange = SearchTextChanged
-                    , placeholder = Nothing
-                    , text = model.searchText
-                    }
+                    (model.stations
+                        |> RemoteData.map (Station.searchStation model.searchText)
+                        |> RemoteData.map (List.map stationRow)
+                        |> RemoteData.withDefault []
+                    )
                 ]
             ]
         )
+
+
+stationRow : Station -> El.Element Msg
+stationRow station =
+    El.el
+        []
+        (El.text <| station.name ++ " " ++ (Station.lineCodeDisplay station |> Maybe.withDefault ""))
+
+
+searchInput : String -> El.Element Msg
+searchInput searchText =
+    El.column
+        [ El.centerX
+        ]
+        [ Input.text
+            [ Border.color primary
+            , Background.color primary
+            , borderShadow
+            ]
+            { label =
+                Input.labelBelow
+                    [ El.paddingEach { edges | left = 16, top = 4 }
+                    ]
+                    (El.text "Station Name")
+            , onChange = SearchTextChanged
+            , placeholder =
+                Just <|
+                    Input.placeholder
+                        [ Font.color text
+                        ]
+                        (El.text "Search")
+            , text = searchText
+            }
+        ]
 
 
 subscriptions : Model -> Sub Msg
@@ -120,28 +176,38 @@ main =
         }
 
 
+borderShadow =
+    Border.shadow
+        { offset = ( 2, 2 )
+        , blur = 10 -- box-shadow: 5px 5px 20px
+        , size = 0
+        , color = El.rgba255 0 0 0 0.5
+        }
+
+
 backgroundColor =
-    El.rgba255 18 18 18 1
-
-
-overlay1 =
-    El.rgba255 255 255 255 0.1
-
-
-overlay2 =
-    El.rgba255 255 255 255 0.2
-
-
-overlay3 =
-    El.rgba255 255 255 255 0.3
+    El.rgba255 255 255 255 0
 
 
 text =
-    El.rgba 255 255 255 0.8
+    El.rgba255 255 255 255 0.8
+
+
+primaryBackground =
+    El.rgba255 34 153 84 1
 
 
 primary =
-    El.rgba 255 165 0 1
+    El.rgba255 22 160 133 1
+
+
+secondary =
+    El.rgba255 230 126 34 1
+
+
+secondaryBackground =
+    El.rgba255 235 152 78 1
+
 
 edges =
     { top = 0
