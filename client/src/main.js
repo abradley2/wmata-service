@@ -1,10 +1,11 @@
 import { Elm } from './Main.elm'
 
 const dev = window.location.pathname.includes('localhost')
+const seeds = window.crypto.getRandomValues(new Uint32Array(4))
 
 const app = Elm.Main.init({
   node: document.getElementById('app'),
-  flags: { dev }
+  flags: { dev, seeds }
 })
 
 function listen () {

@@ -11,15 +11,45 @@ import Html as H
 import Http
 import Json.Decode as D
 import Platform exposing (Program)
+import Random exposing (initialSeed)
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
+import UUID exposing (Seeds, UUID)
 
 
 port receivePredictions : (D.Value -> msg) -> Sub msg
 
 
 type alias Flags =
-    {}
+    { decoded : Bool
+    , seeds : Seeds
+    }
+
+
+defaultFlags : Flags
+defaultFlags =
+    { decoded = False
+    , seeds =
+        Seeds
+            (Random.initialSeed 0)
+            (Random.initialSeed 0)
+            (Random.initialSeed 0)
+            (Random.initialSeed 0)
+    }
+
+
+flagsDecoder : D.Decoder Flags
+flagsDecoder =
+    D.map2
+        Flags
+        (D.succeed True)
+        (D.at [ "seeds" ] <|
+            D.map4 Seeds
+                (D.at [ "0" ] D.int |> D.map Random.initialSeed)
+                (D.at [ "1" ] D.int |> D.map Random.initialSeed)
+                (D.at [ "2" ] D.int |> D.map Random.initialSeed)
+                (D.at [ "3" ] D.int |> D.map Random.initialSeed)
+        )
 
 
 type Msg
@@ -29,7 +59,9 @@ type Msg
 
 
 type alias Model =
-    { searchText : String
+    { appInitialized : Result String ()
+    , clientId : UUID
+    , searchText : String
     , stations : RemoteData Http.Error (List Station)
     }
 
@@ -62,9 +94,24 @@ update msg model =
             ( model, Cmd.none )
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
-    ( { searchText = ""
+init : D.Value -> ( Model, Cmd Msg )
+init flagsJson =
+    let
+        flagsResult =
+            D.decodeValue
+                flagsDecoder
+                flagsJson
+                |> Result.mapError D.errorToString
+
+        flags =
+            Result.withDefault defaultFlags flagsResult
+
+        ( clientId, nextSeeds ) =
+            UUID.step flags.seeds
+    in
+    ( { appInitialized = flagsResult |> Result.map (always ())
+      , clientId = clientId
+      , searchText = ""
       , stations = Loading
       }
     , Http.request
@@ -108,7 +155,7 @@ view model =
                 [ El.paddingXY 0 16
                 , El.width El.fill
                 , Background.color primaryBackground
-                , Border.widthEach { edges | bottom = 3}
+                , Border.widthEach { edges | bottom = 3 }
                 , Border.color primary
                 ]
                 (searchInput model.searchText)
@@ -191,7 +238,7 @@ subscriptions _ =
     receivePredictions ReceivedPredictions
 
 
-main : Program Flags Model Msg
+main : Program D.Value Model Msg
 main =
     element
         { update = update
@@ -229,8 +276,10 @@ primaryBackground =
 primary =
     El.rgba255 233 20 54 1
 
+
 primaryLight =
-    El.rgba255 233 20 54 0.85
+    El.rgba255 233 20 54 0.80
+
 
 edges =
     { top = 0
