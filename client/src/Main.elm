@@ -86,8 +86,8 @@ view model =
     El.layoutWith
         { options =
             [ El.focusStyle
-                { borderColor = Just secondary
-                , backgroundColor = Nothing
+                { borderColor = Just foregroundText
+                , backgroundColor = Just primary
                 , shadow =
                     Just
                         { offset = ( 2, 2 )
@@ -98,8 +98,8 @@ view model =
                 }
             ]
         }
-        [ Background.color secondaryBackground
-        , Font.color text
+        [ Font.color text
+        , El.width El.fill
         ]
         (El.column
             [ El.width El.fill
@@ -108,30 +108,54 @@ view model =
                 [ El.paddingXY 0 16
                 , El.width El.fill
                 , Background.color primaryBackground
+                , Border.widthEach { edges | bottom = 3}
+                , Border.color primary
                 ]
                 (searchInput model.searchText)
-            , El.row
+            , El.el
                 [ El.width El.fill
                 , El.inFront <| El.column [] []
                 ]
-                [ El.column
+                (El.column
                     [ El.centerX
+                    , El.width (El.px 320)
                     ]
                     (model.stations
                         |> RemoteData.map (Station.searchStation model.searchText)
                         |> RemoteData.map (List.map stationRow)
                         |> RemoteData.withDefault []
                     )
-                ]
+                )
             ]
         )
 
 
 stationRow : Station -> El.Element Msg
 stationRow station =
-    El.el
-        []
-        (El.text <| station.name ++ " " ++ (Station.lineCodeDisplay station |> Maybe.withDefault ""))
+    let
+        label =
+            El.paragraph [] <| [ El.text <| station.name ++ " " ++ (Station.lineCodeDisplay station |> Maybe.withDefault "") ]
+    in
+    El.row
+        [ El.width El.fill
+        , El.paddingXY 0 8
+        ]
+        [ Input.button
+            [ El.width El.fill
+            , Background.color primaryLight
+            , Font.color (El.rgba255 255 255 255 1)
+            , Font.semiBold
+            , Border.rounded 8
+            , El.paddingXY 16 16
+            ]
+            { onPress = Nothing
+            , label = label
+            }
+        ]
+
+
+
+-- ()
 
 
 searchInput : String -> El.Element Msg
@@ -141,8 +165,9 @@ searchInput searchText =
         ]
         [ Input.text
             [ Border.color primary
-            , Background.color primary
+            , Background.color primaryLight
             , borderShadow
+            , Font.color foregroundText
             ]
             { label =
                 Input.labelBelow
@@ -153,7 +178,7 @@ searchInput searchText =
             , placeholder =
                 Just <|
                     Input.placeholder
-                        [ Font.color text
+                        [ Font.color foregroundText
                         ]
                         (El.text "Search")
             , text = searchText
@@ -190,24 +215,22 @@ backgroundColor =
 
 
 text =
+    El.rgba255 0 0 0 0.5
+
+
+foregroundText =
     El.rgba255 255 255 255 0.8
 
 
 primaryBackground =
-    El.rgba255 34 153 84 1
+    El.rgba255 255 255 255 1
 
 
 primary =
-    El.rgba255 22 160 133 1
+    El.rgba255 233 20 54 1
 
-
-secondary =
-    El.rgba255 230 126 34 1
-
-
-secondaryBackground =
-    El.rgba255 235 152 78 1
-
+primaryLight =
+    El.rgba255 233 20 54 0.85
 
 edges =
     { top = 0
