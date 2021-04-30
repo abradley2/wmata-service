@@ -8,12 +8,14 @@ import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
 import Html as H
+import Html.Attributes exposing (attribute)
 import Http
 import Json.Decode as D
 import Platform exposing (Program)
 import Random exposing (initialSeed)
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
+import Maybe.Extra as MaybeX
 import Task
 import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
@@ -62,6 +64,7 @@ type Msg
     | ReceivedTime Posix
     | ReceivedPredictions D.Value
     | SearchTextChanged String
+    | StationSelected Station
 
 
 type alias Model =
@@ -70,12 +73,29 @@ type alias Model =
     , clientId : UUID
     , searchText : String
     , stations : RemoteData Http.Error (List Station)
+    , selectedStation : Maybe ( Station, Maybe Station )
     }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        StationSelected station ->
+            let
+                coStation =
+                    MaybeX.andThen2
+                        (\code ->
+                            List.filter (.code >> (==) code) >> List.head
+                        )
+                        station.coStations.coStation1
+                        (RemoteData.toMaybe model.stations)
+            in
+            ( { model
+                | selectedStation = Just ( station, coStation )
+              }
+            , Cmd.none
+            )
+
         SearchTextChanged searchText ->
             ( { model
                 | searchText = searchText
@@ -128,6 +148,7 @@ init flagsJson =
       , currentTime = Time.millisToPosix flags.now
       , searchText = ""
       , stations = Loading
+      , selectedStation = Nothing
       }
     , Cmd.batch
         [ Http.request
@@ -217,7 +238,7 @@ stationRow station =
             , Border.rounded 8
             , El.paddingXY 16 16
             ]
-            { onPress = Nothing
+            { onPress = Just <| StationSelected station
             , label = label
             }
         ]
@@ -228,7 +249,7 @@ searchInput searchText =
     El.column
         [ El.centerX
         ]
-        [ Input.text
+        [ Input.search
             [ Border.color primary
             , Background.color primaryLight
             , borderShadow
