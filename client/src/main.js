@@ -5,7 +5,7 @@ const seeds = window.crypto.getRandomValues(new Uint32Array(4))
 
 const app = Elm.Main.init({
   node: document.getElementById('app'),
-  flags: { dev, seeds }
+  flags: { dev, seeds, now: Date.now() }
 })
 
 function listen () {

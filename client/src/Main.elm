@@ -14,6 +14,8 @@ import Platform exposing (Program)
 import Random exposing (initialSeed)
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
+import Task
+import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
 
 
@@ -22,6 +24,7 @@ port receivePredictions : (D.Value -> msg) -> Sub msg
 
 type alias Flags =
     { decoded : Bool
+    , now : Int
     , seeds : Seeds
     }
 
@@ -29,6 +32,7 @@ type alias Flags =
 defaultFlags : Flags
 defaultFlags =
     { decoded = False
+    , now = 0
     , seeds =
         Seeds
             (Random.initialSeed 0)
@@ -40,9 +44,10 @@ defaultFlags =
 
 flagsDecoder : D.Decoder Flags
 flagsDecoder =
-    D.map2
+    D.map3
         Flags
         (D.succeed True)
+        (D.at [ "now" ] D.int)
         (D.at [ "seeds" ] <|
             D.map4 Seeds
                 (D.at [ "0" ] D.int |> D.map Random.initialSeed)
@@ -54,12 +59,14 @@ flagsDecoder =
 
 type Msg
     = ReceivedStations (Result Http.Error (List Station))
+    | ReceivedTime Posix
     | ReceivedPredictions D.Value
     | SearchTextChanged String
 
 
 type alias Model =
     { appInitialized : Result String ()
+    , currentTime : Posix
     , clientId : UUID
     , searchText : String
     , stations : RemoteData Http.Error (List Station)
@@ -72,6 +79,13 @@ update msg model =
         SearchTextChanged searchText ->
             ( { model
                 | searchText = searchText
+              }
+            , Cmd.none
+            )
+
+        ReceivedTime time ->
+            ( { model
+                | currentTime = time
               }
             , Cmd.none
             )
@@ -111,20 +125,23 @@ init flagsJson =
     in
     ( { appInitialized = flagsResult |> Result.map (always ())
       , clientId = clientId
+      , currentTime = Time.millisToPosix flags.now
       , searchText = ""
       , stations = Loading
       }
-    , Http.request
-        { method = "GET"
-        , body = Http.emptyBody
-        , timeout = Just <| 1000 * 5
-        , headers =
-            [ Http.header "Accept" "application/json"
-            ]
-        , tracker = Nothing
-        , url = "/api/stations"
-        , expect = Http.expectJson ReceivedStations (D.list Station.decodeStation)
-        }
+    , Cmd.batch
+        [ Http.request
+            { method = "GET"
+            , body = Http.emptyBody
+            , timeout = Just <| 1000 * 5
+            , headers =
+                [ Http.header "Accept" "application/json"
+                ]
+            , tracker = Nothing
+            , url = "/api/stations"
+            , expect = Http.expectJson ReceivedStations (D.list Station.decodeStation)
+            }
+        ]
     )
 
 
@@ -181,7 +198,12 @@ stationRow : Station -> El.Element Msg
 stationRow station =
     let
         label =
-            El.paragraph [] <| [ El.text <| station.name ++ " " ++ (Station.lineCodeDisplay station |> Maybe.withDefault "") ]
+            El.paragraph [] <|
+                [ El.text <|
+                    station.name
+                        ++ " "
+                        ++ (Station.lineCodeDisplay station |> Maybe.withDefault "")
+                ]
     in
     El.row
         [ El.width El.fill
@@ -199,10 +221,6 @@ stationRow station =
             , label = label
             }
         ]
-
-
-
--- ()
 
 
 searchInput : String -> El.Element Msg
@@ -235,7 +253,10 @@ searchInput searchText =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    receivePredictions ReceivedPredictions
+    Sub.batch
+        [ receivePredictions ReceivedPredictions
+        , Time.every 1000 ReceivedTime
+        ]
 
 
 main : Program D.Value Model Msg
@@ -278,7 +299,7 @@ primary =
 
 
 primaryLight =
-    El.rgba255 233 20 54 0.80
+    El.rgba255 233 20 54 0.8
 
 
 edges =
