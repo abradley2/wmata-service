@@ -11,11 +11,11 @@ import Html as H
 import Html.Attributes exposing (attribute)
 import Http
 import Json.Decode as D
+import Maybe.Extra as MaybeX
 import Platform exposing (Program)
 import Random exposing (initialSeed)
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
-import Maybe.Extra as MaybeX
 import Task
 import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
@@ -192,31 +192,25 @@ view model =
             [ El.el
                 [ El.paddingXY 0 16
                 , El.width El.fill
-                , Background.color primaryBackground
                 , Border.widthEach { edges | bottom = 3 }
                 , Border.color primary
                 ]
                 (searchInput model.searchText)
-            , El.el
-                [ El.width El.fill
-                , El.inFront <| El.column [] []
+            , El.column
+                [ El.centerX
+                , El.paddingXY 0 16
                 ]
-                (El.column
-                    [ El.centerX
-                    , El.width (El.px 320)
-                    ]
-                    (model.stations
-                        |> RemoteData.map (Station.searchStation model.searchText)
-                        |> RemoteData.map (List.map stationRow)
-                        |> RemoteData.withDefault []
-                    )
+                (model.stations
+                    |> RemoteData.map (Station.searchStation model.searchText)
+                    |> RemoteData.map (List.map stationEl)
+                    |> RemoteData.withDefault []
                 )
             ]
         )
 
 
-stationRow : Station -> El.Element Msg
-stationRow station =
+stationEl : Station -> El.Element Msg
+stationEl station =
     let
         label =
             El.paragraph [] <|
@@ -226,11 +220,11 @@ stationRow station =
                         ++ (Station.lineCodeDisplay station |> Maybe.withDefault "")
                 ]
     in
-    El.row
-        [ El.width El.fill
+    El.el
+        [ El.width (El.px 320)
         , El.paddingXY 0 8
         ]
-        [ Input.button
+        (Input.button
             [ El.width El.fill
             , Background.color primaryLight
             , Font.color (El.rgba255 255 255 255 1)
@@ -241,35 +235,33 @@ stationRow station =
             { onPress = Just <| StationSelected station
             , label = label
             }
-        ]
+        )
 
 
 searchInput : String -> El.Element Msg
 searchInput searchText =
-    El.column
-        [ El.centerX
+    Input.search
+        [ Border.color primary
+        , Background.color primaryLight
+        , borderShadow
+        , Font.color foregroundText
+        , El.width (El.px 320)
+        , El.centerX
         ]
-        [ Input.search
-            [ Border.color primary
-            , Background.color primaryLight
-            , borderShadow
-            , Font.color foregroundText
-            ]
-            { label =
-                Input.labelBelow
-                    [ El.paddingEach { edges | left = 16, top = 4 }
+        { label =
+            Input.labelBelow
+                [ El.paddingEach { edges | left = 16, top = 4 }
+                ]
+                (El.text "Station Name")
+        , onChange = SearchTextChanged
+        , placeholder =
+            Just <|
+                Input.placeholder
+                    [ Font.color foregroundText
                     ]
-                    (El.text "Station Name")
-            , onChange = SearchTextChanged
-            , placeholder =
-                Just <|
-                    Input.placeholder
-                        [ Font.color foregroundText
-                        ]
-                        (El.text "Search")
-            , text = searchText
-            }
-        ]
+                    (El.text "Search")
+        , text = searchText
+        }
 
 
 subscriptions : Model -> Sub Msg
