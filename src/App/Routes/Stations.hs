@@ -45,7 +45,7 @@ fetchStations_ env =
     results <-
       ll "Error decoding api response: " $ decodeApiResponse (getResponseBody res)
     ll "Malformed results found: " $ sequence results
-    return $ rights results
+    pure $ rights results
   where
     decodeApiResponse = fmap WMATA.Stations.results . eitherDecode . LazyB8.fromStrict
 

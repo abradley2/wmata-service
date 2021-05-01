@@ -68,16 +68,15 @@ pollPredictions db env = do
 -- request the accepts "text/html" to point to "index.html".
 -- Enables SPA navigation for the frontend.
 spaMiddleware :: Application -> Application
-spaMiddleware scottyApp req respond = scottyApp
-  ( if isDocumentRequest then newReq else req )
-  respond
+spaMiddleware scottyApp req = scottyApp (if isDocumentRequest then newReq else req)
   where
     requestHeaders = Network.Wai.requestHeaders
     newReq = req {pathInfo = ["index.html"]}
-    isDocumentRequest = maybe
-      False
-      (B8.isInfixOf "text/html" . snd)
-      (find ((==) hAccept . fst) $ requestHeaders req)
+    isDocumentRequest =
+      maybe
+        False
+        (B8.isInfixOf "text/html" . snd)
+        (find ((==) hAccept . fst) $ requestHeaders req)
 
 apiApp :: IO Application
 apiApp = Scotty.scottyApp $ do

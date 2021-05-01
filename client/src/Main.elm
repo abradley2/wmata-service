@@ -9,11 +9,13 @@ import Element.Font as Font
 import Element.Input as Input
 import Html as H
 import Html.Attributes exposing (attribute)
-import Http
+import Http exposing (Error(..))
 import Json.Decode as D
+import Json.Encode as E
 import Maybe.Extra as MaybeX
 import Platform exposing (Program)
-import Random exposing (initialSeed)
+import Prediction exposing (Prediction)
+import Random
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
 import Task
@@ -63,8 +65,10 @@ type Msg
     = ReceivedStations (Result Http.Error (List Station))
     | ReceivedTime Posix
     | ReceivedPredictions D.Value
+    | TimeStampedPredictions (List Prediction) Posix
     | SearchTextChanged String
     | StationSelected Station
+    | LoggedError (Result Http.Error ())
 
 
 type alias Model =
@@ -73,13 +77,54 @@ type alias Model =
     , clientId : UUID
     , searchText : String
     , stations : RemoteData Http.Error (List Station)
+    , predictions : Maybe ( List Prediction, Posix )
     , selectedStation : Maybe ( Station, Maybe Station )
     }
+
+
+logError : String -> Cmd Msg
+logError err =
+    Http.request
+        { method = "POST"
+        , body =
+            Http.jsonBody <|
+                E.object
+                    [ ( "message", E.string err )
+                    ]
+        , expect = Http.expectWhatever LoggedError
+        , timeout = Just 3000
+        , tracker = Nothing
+        , url = "/api/log"
+        , headers = []
+        }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReceivedPredictions jsonValue ->
+            let
+                result =
+                    D.decodeValue (D.list Prediction.decodePrediction) jsonValue
+            in
+            case result of
+                Ok value ->
+                    ( model
+                    , Task.perform (TimeStampedPredictions value) Time.now
+                    )
+
+                Err err ->
+                    ( model
+                    , logError <| D.errorToString err
+                    )
+
+        TimeStampedPredictions predictions posixTime ->
+            ( { model
+                | predictions = Just ( predictions, posixTime )
+              }
+            , Cmd.none
+            )
+
         StationSelected station ->
             let
                 coStation =
@@ -114,7 +159,7 @@ update msg model =
             ( { model
                 | stations = Failure httpErr
               }
-            , Cmd.none
+            , logError <| httpErrorToString httpErr
             )
 
         ReceivedStations (Result.Ok stations) ->
@@ -124,7 +169,8 @@ update msg model =
             , Cmd.none
             )
 
-        _ ->
+        LoggedError _ ->
+            -- There's nothing we can do if we have an error logging an error
             ( model, Cmd.none )
 
 
@@ -149,6 +195,7 @@ init flagsJson =
       , searchText = ""
       , stations = Loading
       , selectedStation = Nothing
+      , predictions = Nothing
       }
     , Cmd.batch
         [ Http.request
@@ -194,11 +241,14 @@ view model =
                 , El.width El.fill
                 , Border.widthEach { edges | bottom = 3 }
                 , Border.color primary
+                , El.htmlAttribute (attribute "role" "combobox")
                 ]
-                (searchInput model.searchText)
+                (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
             , El.column
                 [ El.centerX
                 , El.paddingXY 0 16
+                , El.htmlAttribute (attribute "role" "listbox")
+                , El.htmlAttribute (attribute "aria-orientation" "vertical")
                 ]
                 (model.stations
                     |> RemoteData.map (Station.searchStation model.searchText)
@@ -223,6 +273,7 @@ stationEl station =
     El.el
         [ El.width (El.px 320)
         , El.paddingXY 0 8
+        , El.htmlAttribute (attribute "role" "none")
         ]
         (Input.button
             [ El.width El.fill
@@ -231,6 +282,7 @@ stationEl station =
             , Font.semiBold
             , Border.rounded 8
             , El.paddingXY 16 16
+            , El.htmlAttribute (attribute "role" "option")
             ]
             { onPress = Just <| StationSelected station
             , label = label
@@ -238,8 +290,8 @@ stationEl station =
         )
 
 
-searchInput : String -> El.Element Msg
-searchInput searchText =
+searchInput : Maybe Station -> String -> El.Element Msg
+searchInput selectedStation searchText =
     Input.search
         [ Border.color primary
         , Background.color primaryLight
@@ -247,6 +299,15 @@ searchInput searchText =
         , Font.color foregroundText
         , El.width (El.px 320)
         , El.centerX
+        , El.htmlAttribute (attribute "aria-controls" "station-results")
+        , El.htmlAttribute (attribute "aria-autocomplete" "list")
+        , El.htmlAttribute
+            (attribute "aria-activedescendant"
+                (selectedStation
+                    |> Maybe.map .code
+                    |> Maybe.withDefault ""
+                )
+            )
         ]
         { label =
             Input.labelBelow
@@ -321,3 +382,22 @@ edges =
     , bottom = 0
     , left = 0
     }
+
+
+httpErrorToString : Http.Error -> String
+httpErrorToString err =
+    case err of
+        BadUrl url ->
+            "Bad Url: " ++ url
+
+        Timeout ->
+            "Request Timeout"
+
+        NetworkError ->
+            "Network Error"
+
+        BadStatus statusCode ->
+            "Bad Status: " ++ String.fromInt statusCode
+
+        BadBody decodeErr ->
+            "Bad Body: " ++ decodeErr
