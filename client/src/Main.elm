@@ -225,8 +225,8 @@ view model =
     El.layoutWith
         { options =
             [ El.focusStyle
-                { borderColor = Just foregroundText
-                , backgroundColor = Just primary
+                { borderColor = Just crimsonLight
+                , backgroundColor = Just white
                 , shadow =
                     Just
                         { offset = ( 2, 2 )
@@ -237,7 +237,7 @@ view model =
                 }
             ]
         }
-        [ Font.color text
+        [ Font.color white
         , El.width El.fill
         ]
         (El.column
@@ -247,7 +247,7 @@ view model =
                 [ El.paddingXY 0 16
                 , El.width El.fill
                 , Border.widthEach { edges | bottom = 3 }
-                , Border.color primary
+                , Border.color crimsonLight
                 , El.htmlAttribute (attribute "role" "combobox")
                 ]
                 (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
@@ -335,7 +335,7 @@ stationEl station =
         ]
         (Input.button
             [ El.width El.fill
-            , Background.color primaryLight
+            , Background.color crimson
             , Font.color (El.rgba255 255 255 255 1)
             , Font.semiBold
             , Border.rounded 8
@@ -351,10 +351,11 @@ stationEl station =
 searchInput : Maybe Station -> String -> El.Element Msg
 searchInput selectedStation searchText =
     Input.search
-        [ Border.color primary
-        , Background.color primaryLight
+        [ Border.color crimsonLight
+        , Background.color white
         , borderShadow
-        , Font.color foregroundText
+        , Font.color crimsonLight
+        , El.focused []
         , El.width (El.px 320)
         , El.centerX
         , El.htmlAttribute (attribute "aria-controls" "station-results")
@@ -371,13 +372,14 @@ searchInput selectedStation searchText =
         { label =
             Input.labelBelow
                 [ El.paddingEach { edges | left = 16, top = 4 }
+                , Font.color crimsonLight
                 ]
                 (El.text "Station Name")
         , onChange = SearchTextChanged
         , placeholder =
             Just <|
                 Input.placeholder
-                    [ Font.color foregroundText
+                    [ Font.color gray
                     ]
                     (El.text "Search")
         , text = searchText
@@ -411,28 +413,20 @@ borderShadow =
         }
 
 
-backgroundColor =
-    El.rgba255 255 255 255 0
-
-
-text =
+gray =
     El.rgba255 0 0 0 0.5
 
 
-foregroundText =
-    El.rgba255 255 255 255 0.8
-
-
-primaryBackground =
-    El.rgba255 255 255 255 1
-
-
-primary =
-    El.rgba255 233 20 54 1
-
-
-primaryLight =
+crimsonLight =
     El.rgba255 233 20 54 0.8
+
+
+crimson =
+    El.rgba255 233 20 54 0.8
+
+
+white =
+    El.rgba255 255 255 255 0.8
 
 
 edges =
