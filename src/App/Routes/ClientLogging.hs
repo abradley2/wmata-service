@@ -27,7 +27,7 @@ toValue = eitherDecode . LazyB8.fromStrict
 
 logSource = "ClientLogging.hs"
 
-logClientError_ :: B8.ByteString -> LoggingT (MaybeT IO) ()
+logClientError_ :: Value -> LoggingT (MaybeT IO) Value
 logClientError_ reqBody =
   LoggingT $ \logger -> do
     let logError str = logger defaultLoc logSource LevelError . (str <>)
@@ -35,8 +35,11 @@ logClientError_ reqBody =
     logPayload <-
       logLeft
         (logError "Error decoding request payload: ")
-        (parseJSON <$> toValue reqBody)
-    liftIO $ logger defaultLoc "ClientLogging.hs" LevelError "reqBody"
+        (parseJSON reqBody)
+
+    liftIO $ logger defaultLoc logSource LevelError (show logPayload)
+
+    pure $ object ["success" .= True]
   where
     parseJSON :: Value -> Either String LogErrorBody
     parseJSON =
@@ -46,6 +49,6 @@ logClientError_ reqBody =
       )
         . Data.Aeson.fromJSON
 
-logClientError :: MonadIO m => B8.ByteString -> m (Maybe ())
+logClientError :: MonadIO m => Value -> m (Maybe Value)
 logClientError =
   liftIO . runMaybeT . runStdoutLoggingT . logClientError_

@@ -9,6 +9,7 @@ where
 
 import App.DB
 import App.Env
+import qualified App.Routes.ClientLogging as ClientLogging
 import qualified App.Routes.Predictions as Predictions
 import qualified App.Routes.Stations as Stations
 import Control.Concurrent
@@ -99,8 +100,14 @@ apiApp = Scotty.scottyApp $ do
         status status200
         Scotty.json jsonVal
   post "/api/log" $ do
-    reqBody <- Scotty.jsonData  
-    text "hi"
+    reqBody <- Scotty.jsonData
+    ClientLogging.logClientError reqBody >>= \case
+      Just jsonVal -> do
+        status status200
+        Scotty.json jsonVal
+      Nothing -> do
+        status status500
+        text "Internal Server Error"
   where
     get = Scotty.get
 
