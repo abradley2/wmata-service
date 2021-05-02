@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b51a029ab3b8a7f1f4131c3c4f2d82548d5c21c2d5885c7f11c1f9c131f306a6
+-- hash: 2ee105277e6b3bddb76b86f433b6588993f2c010fa32dba7bd0190260f62f73b
 
 name:           metro-backend
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       App.DB
       App.Env
       App.Logging
+      App.Routes.ClientLogging
       App.Routes.Predictions
       App.Routes.Stations
       Server

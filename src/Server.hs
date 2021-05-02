@@ -98,6 +98,9 @@ apiApp = Scotty.scottyApp $ do
       Just jsonVal -> do
         status status200
         Scotty.json jsonVal
+  post "/api/log" $ do
+    reqBody <- Scotty.jsonData  
+    text "hi"
   where
     get = Scotty.get
 

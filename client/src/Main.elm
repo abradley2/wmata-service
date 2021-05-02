@@ -82,14 +82,15 @@ type alias Model =
     }
 
 
-logError : String -> Cmd Msg
-logError err =
+logError : UUID -> String -> Cmd Msg
+logError clientId err =
     Http.request
         { method = "POST"
         , body =
             Http.jsonBody <|
                 E.object
                     [ ( "message", E.string err )
+                    , ( "clientId", E.string <| UUID.toString clientId )
                     ]
         , expect = Http.expectWhatever LoggedError
         , timeout = Just 3000
@@ -115,7 +116,7 @@ update msg model =
 
                 Err err ->
                     ( model
-                    , logError <| D.errorToString err
+                    , logError model.clientId <| D.errorToString err
                     )
 
         TimeStampedPredictions predictions posixTime ->
@@ -159,7 +160,7 @@ update msg model =
             ( { model
                 | stations = Failure httpErr
               }
-            , logError <| httpErrorToString httpErr
+            , logError model.clientId <| httpErrorToString httpErr
             )
 
         ReceivedStations (Result.Ok stations) ->
