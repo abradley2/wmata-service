@@ -18,6 +18,7 @@ import Prediction exposing (Prediction)
 import Random
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
+import SvgIcons exposing (starIcon)
 import Task
 import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
@@ -361,6 +362,16 @@ searchInput selectedStation searchText =
         , Background.color white
         , borderShadow
         , Font.color crimsonLight
+        , El.onLeft
+            (El.el
+                [ El.height <| El.px 60
+                , El.width <| El.px 60
+                , El.moveUp 6
+                , El.moveLeft 6
+                ]
+             <|
+                El.html starIcon
+            )
         , El.focused
             [ Font.color white
             , Background.color crimsonLight
