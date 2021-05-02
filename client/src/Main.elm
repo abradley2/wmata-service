@@ -301,14 +301,16 @@ predictionEl prediction =
     El.row
         [ El.width <| El.px 320
         , Border.widthEach { edges | bottom = 2, left = 2 }
-        , El.paddingEach { edges | left = 16, right = 16, bottom = 2, top = 2 }
+        , El.paddingEach { edges | left = 8, right = 8, bottom = 2, top = 2 }
         ]
         [ El.el
             [ El.alignLeft
+            , El.width <| El.fillPortion 1
             ]
-            (El.text <| prediction.destinationName)
+            (El.paragraph [] [ El.text prediction.destinationName ])
         , El.el
             [ El.alignRight
+            , El.width <| El.fillPortion 0
             , El.paddingEach { edges | left = 8 }
             ]
             (El.text <| prediction.minutes)
