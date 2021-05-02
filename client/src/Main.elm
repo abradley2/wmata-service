@@ -189,7 +189,7 @@ init flagsJson =
         flags =
             Result.withDefault defaultFlags flagsResult
 
-        ( clientId, nextSeeds ) =
+        ( clientId, _ ) =
             UUID.step flags.seeds
     in
     ( { appInitialized = flagsResult |> Result.map (always ())
@@ -226,7 +226,7 @@ view model =
         { options =
             [ El.focusStyle
                 { borderColor = Just crimsonLight
-                , backgroundColor = Just white
+                , backgroundColor = Just crimson
                 , shadow =
                     Just
                         { offset = ( 2, 2 )
@@ -300,8 +300,13 @@ predictionEl : Prediction -> El.Element Msg
 predictionEl prediction =
     El.row
         [ El.width <| El.px 320
-        , Border.widthEach { edges | bottom = 2, left = 2 }
-        , El.paddingEach { edges | left = 8, right = 8, bottom = 2, top = 2 }
+        , El.paddingXY 16 16
+        , Border.width 2
+        , Border.color crimson
+        , Border.rounded 8
+        , Font.color crimsonLight
+        , Font.size 20
+        , Font.semiBold
         ]
         [ El.el
             [ El.alignLeft
@@ -335,8 +340,8 @@ stationEl station =
         ]
         (Input.button
             [ El.width El.fill
-            , Background.color crimson
-            , Font.color (El.rgba255 255 255 255 1)
+            , Background.color crimsonLight
+            , Font.color white
             , Font.semiBold
             , Border.rounded 8
             , El.paddingXY 16 16
@@ -351,11 +356,16 @@ stationEl station =
 searchInput : Maybe Station -> String -> El.Element Msg
 searchInput selectedStation searchText =
     Input.search
-        [ Border.color crimsonLight
+        [ Border.width 2
+        , Border.color crimsonLight
         , Background.color white
         , borderShadow
         , Font.color crimsonLight
-        , El.focused []
+        , El.focused
+            [ Font.color white
+            , Background.color crimsonLight
+            , Border.color crimson
+            ]
         , El.width (El.px 320)
         , El.centerX
         , El.htmlAttribute (attribute "aria-controls" "station-results")
@@ -414,7 +424,7 @@ borderShadow =
 
 
 gray =
-    El.rgba255 0 0 0 0.5
+    El.rgba255 0 0 0 0.4
 
 
 crimsonLight =
@@ -422,11 +432,11 @@ crimsonLight =
 
 
 crimson =
-    El.rgba255 233 20 54 0.8
+    El.rgba255 233 20 54 1
 
 
 white =
-    El.rgba255 255 255 255 0.8
+    El.rgba255 255 255 255 1
 
 
 edges =
