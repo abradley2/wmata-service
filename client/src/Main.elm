@@ -138,6 +138,7 @@ update msg model =
             in
             ( { model
                 | selectedStation = Just ( station, coStation )
+                , searchText = station.name
               }
             , Cmd.none
             )
@@ -145,6 +146,7 @@ update msg model =
         SearchTextChanged searchText ->
             ( { model
                 | searchText = searchText
+                , selectedStation = Nothing
               }
             , Cmd.none
             )
@@ -216,6 +218,10 @@ init flagsJson =
 
 view : Model -> H.Html Msg
 view model =
+    let
+        showStations =
+            MaybeX.isJust model.selectedStation
+    in
     El.layoutWith
         { options =
             [ El.focusStyle
@@ -251,14 +257,62 @@ view model =
                 , El.htmlAttribute (attribute "role" "listbox")
                 , El.htmlAttribute (attribute "id" "station-results")
                 , El.htmlAttribute (attribute "aria-orientation" "vertical")
+                , El.htmlAttribute
+                    (attribute "aria-hidden" <|
+                        if showStations then
+                            "false"
+
+                        else
+                            "true"
+                    )
                 ]
                 (model.stations
                     |> RemoteData.map (Station.searchStation model.searchText)
                     |> RemoteData.map (List.map stationEl)
                     |> RemoteData.withDefault []
+                    |> (\menuItems ->
+                            if MaybeX.isJust model.selectedStation then
+                                []
+
+                            else
+                                menuItems
+                       )
+                )
+            , El.column
+                [ El.centerX
+                , El.paddingXY 0 16
+                , El.htmlAttribute (attribute "aria-live" "polite")
+                , El.spacingXY 0 16
+                ]
+                (model.selectedStation
+                    |> Maybe.map (Tuple.first >> .code)
+                    |> Maybe.map2
+                        (\predictions code -> List.filter (.locationCode >> (==) code) predictions)
+                        (Maybe.map Tuple.first model.predictions)
+                    |> Maybe.map (List.map predictionEl)
+                    |> Maybe.withDefault []
                 )
             ]
         )
+
+
+predictionEl : Prediction -> El.Element Msg
+predictionEl prediction =
+    El.row
+        [ El.width <| El.px 320
+        , Border.widthEach { edges | bottom = 2, left = 2 }
+        , El.paddingEach { edges | left = 16, right = 16, bottom = 2, top = 2 }
+        ]
+        [ El.el
+            [ El.alignLeft
+            ]
+            (El.text <| prediction.destinationName)
+        , El.el
+            [ El.alignRight
+            , El.paddingEach { edges | left = 8 }
+            ]
+            (El.text <| prediction.minutes)
+        ]
 
 
 stationEl : Station -> El.Element Msg
@@ -310,6 +364,7 @@ searchInput selectedStation searchText =
                     |> Maybe.withDefault ""
                 )
             )
+        , Event.onFocus (SearchTextChanged "")
         ]
         { label =
             Input.labelBelow
