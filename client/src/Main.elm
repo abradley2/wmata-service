@@ -249,6 +249,7 @@ view model =
                 [ El.centerX
                 , El.paddingXY 0 16
                 , El.htmlAttribute (attribute "role" "listbox")
+                , El.htmlAttribute (attribute "id" "station-results")
                 , El.htmlAttribute (attribute "aria-orientation" "vertical")
                 ]
                 (model.stations

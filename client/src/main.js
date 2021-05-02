@@ -18,7 +18,7 @@ function listen () {
       ws.close()
       setTimeout(listen, 0)
     }, 8 * 1000)
-    app.ports.receivePredictions.send(ev.data)
+    app.ports.receivePredictions.send(JSON.parse(ev.data))
   }
 
   ws.onerror = function () { ws.close() }
