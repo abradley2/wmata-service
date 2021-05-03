@@ -439,6 +439,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ receivePredictions ReceivedPredictions
+        , receivedLocation ReceivedLocation
         , Time.every 1000 ReceivedTime
         ]
 
