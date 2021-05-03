@@ -1,4 +1,10 @@
 import { Elm } from './Main.elm'
+import localforage from 'localforage'
+
+const store = localforage.createInstance({
+  name: '__dcrailz__',
+  driver: localforage.INDEXEDDB
+})
 
 const dev = window.location.pathname.includes('localhost')
 const seeds = window.crypto.getRandomValues(new Uint32Array(4))
@@ -27,3 +33,17 @@ function listen () {
 }
 
 listen()
+
+store.getItem('location', function (err, value) {
+  if (err !== null) {
+    app.ports.receivedLocation.send({
+      type: 'Failure',
+      error: err instanceof Error ? err.message : 'Unknown error'
+    })
+    return
+  }
+  app.ports.receivedLocation.send(value
+    ? { type: 'Success', value }
+    : { type: 'NotAsked' }
+  )
+})

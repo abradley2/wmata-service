@@ -17,6 +17,7 @@ import Platform exposing (Program)
 import Prediction exposing (Prediction)
 import Random
 import RemoteData exposing (RemoteData(..))
+import Result.Extra as ResultX
 import Station exposing (Station)
 import SvgIcons exposing (..)
 import Task
@@ -25,6 +26,9 @@ import UUID exposing (Seeds, UUID)
 
 
 port receivePredictions : (D.Value -> msg) -> Sub msg
+
+
+port receivedLocation : (D.Value -> msg) -> Sub msg
 
 
 type alias Flags =
@@ -64,6 +68,7 @@ flagsDecoder =
 
 type Msg
     = ReceivedStations (Result Http.Error (List Station))
+    | ReceivedLocation D.Value
     | ReceivedTime Posix
     | ReceivedPredictions D.Value
     | TimeStampedPredictions (List Prediction) Posix
@@ -78,6 +83,7 @@ type alias Model =
     , clientId : UUID
     , searchText : String
     , stations : RemoteData Http.Error (List Station)
+    , location : RemoteData String ( Float, Float )
     , predictions : Maybe ( List Prediction, Posix )
     , selectedStation : Maybe ( Station, Maybe Station )
     }
@@ -104,6 +110,21 @@ logError clientId err =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReceivedLocation jsonVal ->
+            let
+                location =
+                    D.decodeValue
+                        (D.map2 Tuple.pair
+                            (D.at [ "0" ] D.float)
+                            (D.at [ "0" ] D.float)
+                            |> remoteDataDecoder
+                        )
+                        jsonVal
+                        |> Result.mapError (\err -> Failure (D.errorToString err))
+                        |> ResultX.merge
+            in
+            ( { model | location = location }, Cmd.none )
+
         ReceivedPredictions jsonValue ->
             let
                 result =
@@ -196,6 +217,7 @@ init flagsJson =
     ( { appInitialized = flagsResult |> Result.map (always ())
       , clientId = clientId
       , currentTime = Time.millisToPosix flags.now
+      , location = NotAsked
       , searchText = ""
       , stations = Loading
       , selectedStation = Nothing
@@ -481,3 +503,30 @@ httpErrorToString err =
 
         BadBody decodeErr ->
             "Bad Body: " ++ decodeErr
+
+
+remoteDataDecoder : D.Decoder a -> D.Decoder (RemoteData String a)
+remoteDataDecoder valueDecoder =
+    D.oneOf
+        [ constDecoder "Success" (D.at [ "type" ] D.string)
+            |> D.map2 (\val _ -> Success val) valueDecoder
+        , constDecoder "Failure" (D.at [ "type" ] D.string)
+            |> D.map2 (\err _ -> Failure err) (D.at [ "error" ] D.string)
+        , constDecoder "NotAsked" (D.at [ "type" ] D.string)
+            |> D.map (always NotAsked)
+        , constDecoder "Loading" (D.at [ "type" ] D.string)
+            |> D.map (always Loading)
+        ]
+
+
+constDecoder : String -> D.Decoder String -> D.Decoder String
+constDecoder val decoder =
+    decoder
+        |> D.andThen
+            (\decodedVal ->
+                if decodedVal == val then
+                    D.succeed val
+
+                else
+                    D.fail val
+            )
