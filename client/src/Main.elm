@@ -18,7 +18,7 @@ import Prediction exposing (Prediction)
 import Random
 import RemoteData exposing (RemoteData(..))
 import Station exposing (Station)
-import SvgIcons exposing (starIcon)
+import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
