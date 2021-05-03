@@ -245,16 +245,32 @@ view model =
             [ El.width El.fill
             ]
             [ El.el
-                [ El.paddingXY 0 16
+                [ El.paddingEach { edges | top = 16, bottom = 8 }
                 , El.width El.fill
-                , Border.widthEach { edges | bottom = 3 }
+                , Border.widthEach { edges | bottom = 4 }
                 , Border.color crimsonLight
                 , El.htmlAttribute (attribute "role" "combobox")
                 ]
                 (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
+            , El.row
+                [ El.spaceEvenly
+                , El.width <| El.px 320
+                , El.centerX
+                , El.paddingXY 24 6
+                ]
+                (List.map
+                    (\_ ->
+                        El.el
+                            [ El.width <| El.px 48
+                            , El.height <| El.px 48
+                            ]
+                            (El.html starIcon)
+                    )
+                    [ 1, 2, 3 ]
+                )
             , El.column
                 [ El.centerX
-                , El.paddingXY 0 16
+                , El.paddingXY 0 0
                 , El.htmlAttribute (attribute "role" "listbox")
                 , El.htmlAttribute (attribute "id" "station-results")
                 , El.htmlAttribute (attribute "aria-orientation" "vertical")
@@ -281,7 +297,7 @@ view model =
                 )
             , El.column
                 [ El.centerX
-                , El.paddingXY 0 16
+                , El.paddingXY 0 0
                 , El.htmlAttribute (attribute "aria-live" "polite")
                 , El.spacingXY 0 16
                 ]
@@ -362,16 +378,6 @@ searchInput selectedStation searchText =
         , Background.color white
         , borderShadow
         , Font.color crimsonLight
-        , El.onLeft
-            (El.el
-                [ El.height <| El.px 60
-                , El.width <| El.px 60
-                , El.moveUp 6
-                , El.moveLeft 6
-                ]
-             <|
-                El.html starIcon
-            )
         , El.focused
             [ Font.color white
             , Background.color crimsonLight
