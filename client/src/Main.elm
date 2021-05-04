@@ -430,7 +430,7 @@ searchInput selectedStation searchText =
         , Font.color crimsonLight
         , El.focused
             [ Font.color white
-            , Background.color crimsonLight
+            , Background.color crimson
             , Border.color crimson
             ]
         , El.width (El.px 320)
