@@ -285,6 +285,24 @@ view model =
                 ]
                 (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
             , El.row
+                [ El.paddingXY 0 8
+                , El.width El.fill
+                ]
+                [ Input.button
+                    [ Background.color crimsonLight
+                    , Border.rounded 99999
+                    , El.centerX
+                    ]
+                    { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
+                    , label =
+                        El.el
+                            [ El.width <| El.px 60
+                            , El.height <| El.px 60
+                            ]
+                            (El.html locationIcon)
+                    }
+                ]
+            , El.row
                 [ El.spaceEvenly
                 , El.width <| El.px 320
                 , El.centerX
@@ -478,7 +496,7 @@ gray =
 
 
 crimsonLight =
-    El.rgba255 233 20 54 0.8
+    El.rgba255 233 20 54 0.75
 
 
 crimson =

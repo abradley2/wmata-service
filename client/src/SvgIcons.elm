@@ -18,7 +18,7 @@ starIcon =
 
 locationIcon =
     Svg.svg
-        [ fill "rgba(233, 20, 54, 0.8)"
+        [ fill "rgba(255, 255, 255, 1)"
         , viewBox "0 0 24 24"
         ]
         [ Svg.g
