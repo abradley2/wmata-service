@@ -68,6 +68,7 @@ flagsDecoder =
 
 type Msg
     = ReceivedStations (Result Http.Error (List Station))
+    | ToggleLocationConfirm Bool
     | ReceivedLocation D.Value
     | ReceivedTime Posix
     | ReceivedPredictions D.Value
@@ -80,6 +81,7 @@ type Msg
 type alias Model =
     { appInitialized : Result String ()
     , currentTime : Posix
+    , locationConfirm : Bool
     , clientId : UUID
     , searchText : String
     , stations : RemoteData Http.Error (List Station)
@@ -110,6 +112,13 @@ logError clientId err =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ToggleLocationConfirm locationConfirm ->
+            ( { model
+                | locationConfirm = locationConfirm
+              }
+            , Cmd.none
+            )
+
         ReceivedLocation jsonVal ->
             let
                 location =
@@ -216,8 +225,9 @@ init flagsJson =
     in
     ( { appInitialized = flagsResult |> Result.map (always ())
       , clientId = clientId
+      , locationConfirm = False
       , currentTime = Time.millisToPosix flags.now
-      , location = NotAsked
+      , location = Loading
       , searchText = ""
       , stations = Loading
       , selectedStation = Nothing
