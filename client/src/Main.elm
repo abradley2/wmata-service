@@ -81,7 +81,7 @@ type Msg
     | TimeStampedPredictions (List Prediction) Posix
     | SearchTextChanged String
     | StationSelected Station
-    | KeyboardMsg Keyboard.Msg
+    | KeyboardMsg Int Keyboard.Msg
     | Blur ()
     | LoggedError (Result Http.Error ())
 
@@ -93,8 +93,7 @@ type alias Model =
     , locationConfirm : Bool
     , clientId : UUID
     , searchText : String
-    , searchFocused : Bool
-    , focusedItem : Maybe Int
+    , searchFocused : Maybe Int
     , stations : RemoteData Http.Error (List Station)
     , location : RemoteData String ( Float, Float )
     , predictions : Maybe ( List Prediction, Posix )
@@ -130,7 +129,7 @@ update msg model =
             , Cmd.none
             )
 
-        KeyboardMsg keyboardMsg ->
+        KeyboardMsg focusedIndex keyboardMsg ->
             let
                 pressedKeys =
                     Keyboard.update keyboardMsg model.pressedKeys
@@ -140,12 +139,12 @@ update msg model =
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
-                    ( nextModel
+                    ( { nextModel | searchFocused = Just <| focusedIndex - 1 }
                     , Cmd.none
                     )
 
                 South ->
-                    ( nextModel
+                    ( { nextModel | searchFocused = Just <| focusedIndex + 1 }
                     , Cmd.none
                     )
 
@@ -157,17 +156,15 @@ update msg model =
         SearchFocusToggled searchFocused ->
             if searchFocused then
                 ( { model
-                    | searchFocused = searchFocused
+                    | searchFocused = Just 0
                     , searchText = ""
-                    , focusedItem = Just 0
                   }
                 , Cmd.none
                 )
 
             else
                 ( { model
-                    | searchFocused = searchFocused
-                    , focusedItem = Nothing
+                    | searchFocused = Nothing
                     , pressedKeys = []
                   }
                 , Cmd.none
@@ -239,6 +236,7 @@ update msg model =
             ( { model
                 | searchText = searchText
                 , selectedStation = Nothing
+                , searchFocused = Just 0
               }
             , Cmd.none
             )
@@ -293,8 +291,7 @@ init flagsJson =
       , stations = Loading
       , selectedStation = Nothing
       , predictions = Nothing
-      , searchFocused = False
-      , focusedItem = Nothing
+      , searchFocused = Nothing
       , pressedKeys = []
       }
     , Cmd.batch
@@ -529,11 +526,12 @@ subscriptions model =
         [ receivePredictions ReceivedPredictions
         , receivedLocation ReceivedLocation
         , Time.every 1000 ReceivedTime
-        , if model.searchFocused then
-            Sub.map KeyboardMsg Keyboard.subscriptions
+        , case model.searchFocused of
+            Just focusedIndex ->
+                Sub.map (KeyboardMsg focusedIndex) Keyboard.subscriptions
 
-          else
-            Sub.none
+            Nothing ->
+                Sub.none
         , blurs Blur
         ]
 
