@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import Array
 import Browser exposing (element)
 import Element as El
 import Element.Background as Background
@@ -99,6 +100,20 @@ type alias Model =
     , predictions : Maybe ( List Prediction, Posix )
     , selectedStation : Maybe ( Station, Maybe Station )
     }
+
+
+focusedStation : Model -> Maybe String
+focusedStation model =
+    case ( model.searchFocused, model.stations ) of
+        ( Just idx, Success stations ) ->
+            stations
+                |> Station.searchStation model.searchText
+                |> Array.fromList
+                |> Array.get idx
+                |> Maybe.map .name
+
+        _ ->
+            Nothing
 
 
 logError : UUID -> String -> Cmd Msg
@@ -342,7 +357,7 @@ view model =
                 , Border.color crimsonLight
                 , El.htmlAttribute (attribute "role" "combobox")
                 ]
-                (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
+                (searchInput (focusedStation model) model.searchText)
             )
         ]
         (El.column
@@ -397,7 +412,7 @@ view model =
                 ]
                 (model.stations
                     |> RemoteData.map (Station.searchStation model.searchText)
-                    |> RemoteData.map (List.map stationEl)
+                    |> RemoteData.map (List.indexedMap (stationEl model.searchFocused))
                     |> RemoteData.withDefault []
                     |> (\menuItems ->
                             if MaybeX.isJust model.selectedStation then
@@ -451,8 +466,8 @@ predictionEl prediction =
         ]
 
 
-stationEl : Station -> El.Element Msg
-stationEl station =
+stationEl : Maybe Int -> Int -> Station -> El.Element Msg
+stationEl focusedIdx itemIdx station =
     let
         label =
             El.paragraph [] <|
@@ -461,23 +476,37 @@ stationEl station =
                         ++ " "
                         ++ (Station.lineCodeDisplay station |> Maybe.withDefault "")
                 ]
+
+        focused =
+            focusedIdx
+                |> Maybe.map ((==) itemIdx)
+                |> Maybe.withDefault False
     in
     Input.button
-        [ El.width El.fill
-        , Background.color crimsonLight
-        , Font.color white
-        , Font.semiBold
-        , Border.rounded 8
-        , El.paddingXY 16 16
-        , El.htmlAttribute (attribute "role" "option")
-        ]
+        ([ El.width El.fill
+         , Font.color white
+         , Font.semiBold
+         , Border.rounded 8
+         , El.paddingXY 16 16
+         , El.htmlAttribute (attribute "role" "option")
+         ]
+            ++ (if focused then
+                    [ Background.color crimson
+                    , borderShadow
+                    ]
+
+                else
+                    [ Background.color crimsonLight
+                    ]
+               )
+        )
         { onPress = Just <| StationSelected station
         , label = label
         }
 
 
-searchInput : Maybe Station -> String -> El.Element Msg
-searchInput selectedStation searchText =
+searchInput : Maybe String -> String -> El.Element Msg
+searchInput activeDescendant searchText =
     Input.search
         [ Border.width 2
         , Border.color crimsonLight
@@ -496,8 +525,7 @@ searchInput selectedStation searchText =
         , El.htmlAttribute (attribute "aria-autocomplete" "list")
         , El.htmlAttribute
             (attribute "aria-activedescendant"
-                (selectedStation
-                    |> Maybe.map .code
+                (activeDescendant
                     |> Maybe.withDefault ""
                 )
             )
