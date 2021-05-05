@@ -47,3 +47,5 @@ store.getItem('location', function (err, value) {
     : { type: 'NotAsked' }
   )
 })
+
+window.onblur = function() { elmApp.ports.blurs.send({}) }

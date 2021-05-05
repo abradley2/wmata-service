@@ -12,6 +12,8 @@ import Html.Attributes exposing (attribute)
 import Http exposing (Error(..))
 import Json.Decode as D
 import Json.Encode as E
+import Keyboard
+import Keyboard.Arrows exposing (Direction(..), arrowsDirection)
 import Maybe.Extra as MaybeX
 import Platform exposing (Program)
 import Prediction exposing (Prediction)
@@ -23,6 +25,9 @@ import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
+
+
+port blurs : (() -> msg) -> Sub msg
 
 
 port receivePredictions : (D.Value -> msg) -> Sub msg
@@ -68,6 +73,7 @@ flagsDecoder =
 
 type Msg
     = ReceivedStations (Result Http.Error (List Station))
+    | SearchFocusToggled Bool
     | ToggleLocationConfirm Bool
     | ReceivedLocation D.Value
     | ReceivedTime Posix
@@ -75,15 +81,20 @@ type Msg
     | TimeStampedPredictions (List Prediction) Posix
     | SearchTextChanged String
     | StationSelected Station
+    | KeyboardMsg Keyboard.Msg
+    | Blur ()
     | LoggedError (Result Http.Error ())
 
 
 type alias Model =
     { appInitialized : Result String ()
+    , pressedKeys : List Keyboard.Key
     , currentTime : Posix
     , locationConfirm : Bool
     , clientId : UUID
     , searchText : String
+    , searchFocused : Bool
+    , focusedItem : Maybe Int
     , stations : RemoteData Http.Error (List Station)
     , location : RemoteData String ( Float, Float )
     , predictions : Maybe ( List Prediction, Posix )
@@ -112,6 +123,56 @@ logError clientId err =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Blur _ ->
+            ( { model
+                | pressedKeys = []
+              }
+            , Cmd.none
+            )
+
+        KeyboardMsg keyboardMsg ->
+            let
+                pressedKeys =
+                    Keyboard.update keyboardMsg model.pressedKeys
+
+                nextModel =
+                    { model | pressedKeys = pressedKeys }
+            in
+            case arrowsDirection nextModel.pressedKeys of
+                North ->
+                    ( nextModel
+                    , Cmd.none
+                    )
+
+                South ->
+                    ( nextModel
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( nextModel
+                    , Cmd.none
+                    )
+
+        SearchFocusToggled searchFocused ->
+            if searchFocused then
+                ( { model
+                    | searchFocused = searchFocused
+                    , searchText = ""
+                    , focusedItem = Just 0
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( { model
+                    | searchFocused = searchFocused
+                    , focusedItem = Nothing
+                    , pressedKeys = []
+                  }
+                , Cmd.none
+                )
+
         ToggleLocationConfirm locationConfirm ->
             ( { model
                 | locationConfirm = locationConfirm
@@ -232,6 +293,9 @@ init flagsJson =
       , stations = Loading
       , selectedStation = Nothing
       , predictions = Nothing
+      , searchFocused = False
+      , focusedItem = Nothing
+      , pressedKeys = []
       }
     , Cmd.batch
         [ Http.request
@@ -439,7 +503,8 @@ searchInput selectedStation searchText =
                     |> Maybe.withDefault ""
                 )
             )
-        , Event.onFocus (SearchTextChanged "")
+        , Event.onFocus (SearchFocusToggled True)
+        , Event.onLoseFocus (SearchFocusToggled False)
         ]
         { label =
             Input.labelBelow
@@ -459,11 +524,17 @@ searchInput selectedStation searchText =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ receivePredictions ReceivedPredictions
         , receivedLocation ReceivedLocation
         , Time.every 1000 ReceivedTime
+        , if model.searchFocused then
+            Sub.map KeyboardMsg Keyboard.subscriptions
+
+          else
+            Sub.none
+        , blurs Blur
         ]
 
 
