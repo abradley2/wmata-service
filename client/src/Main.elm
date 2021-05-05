@@ -271,38 +271,23 @@ view model =
             ]
         }
         [ Font.color white
-        , El.width El.fill
-        ]
-        (El.column
-            [ El.width El.fill
-            ]
-            [ El.el
+        , El.paddingEach { edges | top = 100 }
+        , El.inFront
+            (El.el
                 [ El.paddingEach { edges | top = 16, bottom = 8 }
                 , El.width El.fill
+                , Background.color <| El.rgba255 255 255 255 1
                 , Border.widthEach { edges | bottom = 4 }
                 , Border.color crimsonLight
                 , El.htmlAttribute (attribute "role" "combobox")
                 ]
                 (searchInput (Maybe.map Tuple.first model.selectedStation) model.searchText)
-            , El.row
-                [ El.paddingXY 0 8
-                , El.width El.fill
-                ]
-                [ Input.button
-                    [ Background.color crimsonLight
-                    , Border.rounded 99999
-                    , El.centerX
-                    ]
-                    { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
-                    , label =
-                        El.el
-                            [ El.width <| El.px 60
-                            , El.height <| El.px 60
-                            ]
-                            (El.html locationIcon)
-                    }
-                ]
-            , El.row
+            )
+        ]
+        (El.column
+            [ El.width El.fill
+            ]
+            [ El.row
                 [ El.spaceEvenly
                 , El.width <| El.px 320
                 , El.centerX
@@ -318,9 +303,24 @@ view model =
                     )
                     [ 1, 2, 3 ]
                 )
+            , Input.button
+                [ Background.color crimsonLight
+                , Border.rounded 99999
+                , El.centerX
+                ]
+                { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
+                , label =
+                    El.el
+                        [ El.width <| El.px 60
+                        , El.height <| El.px 60
+                        ]
+                        (El.html locationIcon)
+                }
             , El.column
                 [ El.centerX
-                , El.paddingXY 0 0
+                , El.spacingXY 0 16
+                , El.paddingEach { edges | top = 16 }
+                , El.width <| El.px 320
                 , El.htmlAttribute (attribute "role" "listbox")
                 , El.htmlAttribute (attribute "id" "station-results")
                 , El.htmlAttribute (attribute "aria-orientation" "vertical")
@@ -347,7 +347,7 @@ view model =
                 )
             , El.column
                 [ El.centerX
-                , El.paddingXY 0 0
+                , El.paddingEach { edges | top = 16 }
                 , El.htmlAttribute (attribute "aria-live" "polite")
                 , El.spacingXY 0 16
                 ]
@@ -400,24 +400,18 @@ stationEl station =
                         ++ (Station.lineCodeDisplay station |> Maybe.withDefault "")
                 ]
     in
-    El.el
-        [ El.width (El.px 320)
-        , El.paddingXY 0 8
-        , El.htmlAttribute (attribute "role" "none")
+    Input.button
+        [ El.width El.fill
+        , Background.color crimsonLight
+        , Font.color white
+        , Font.semiBold
+        , Border.rounded 8
+        , El.paddingXY 16 16
+        , El.htmlAttribute (attribute "role" "option")
         ]
-        (Input.button
-            [ El.width El.fill
-            , Background.color crimsonLight
-            , Font.color white
-            , Font.semiBold
-            , Border.rounded 8
-            , El.paddingXY 16 16
-            , El.htmlAttribute (attribute "role" "option")
-            ]
-            { onPress = Just <| StationSelected station
-            , label = label
-            }
-        )
+        { onPress = Just <| StationSelected station
+        , label = label
+        }
 
 
 searchInput : Maybe Station -> String -> El.Element Msg
@@ -425,6 +419,7 @@ searchInput selectedStation searchText =
     Input.search
         [ Border.width 2
         , Border.color crimsonLight
+        , Border.rounded 8
         , Background.color white
         , borderShadow
         , Font.color crimsonLight
