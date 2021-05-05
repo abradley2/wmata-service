@@ -48,4 +48,4 @@ store.getItem('location', function (err, value) {
   )
 })
 
-window.onblur = function() { elmApp.ports.blurs.send({}) }
+window.onblur = function() { app.ports.blurs.send({}) }

@@ -332,7 +332,7 @@ view model =
             ]
         }
         [ Font.color white
-        , El.paddingEach { edges | top = 100 }
+        , El.paddingEach { edges | top = 110 }
         , El.inFront
             (El.el
                 [ El.paddingEach { edges | top = 16, bottom = 8 }
@@ -354,29 +354,30 @@ view model =
                 , El.centerX
                 , El.paddingXY 24 6
                 ]
-                (List.map
-                    (\_ ->
+                [ El.el
+                    [ El.height <| El.px 48
+                    , El.width <| El.px 48
+                    ]
+                    (El.html starIcon)
+                , Input.button
+                    [ Background.color crimsonLight
+                    , Border.rounded 99999
+                    , El.centerX
+                    ]
+                    { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
+                    , label =
                         El.el
-                            [ El.width <| El.px 48
-                            , El.height <| El.px 48
+                            [ El.width <| El.px 60
+                            , El.height <| El.px 60
                             ]
-                            (El.html starIcon)
-                    )
-                    [ 1, 2, 3 ]
-                )
-            , Input.button
-                [ Background.color crimsonLight
-                , Border.rounded 99999
-                , El.centerX
+                            (El.html locationIcon)
+                    }
+                , El.el
+                    [ El.height <| El.px 48
+                    , El.width <| El.px 48
+                    ]
+                    (El.html starIcon)
                 ]
-                { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
-                , label =
-                    El.el
-                        [ El.width <| El.px 60
-                        , El.height <| El.px 60
-                        ]
-                        (El.html locationIcon)
-                }
             , El.column
                 [ El.centerX
                 , El.spacingXY 0 16
