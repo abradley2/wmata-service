@@ -147,6 +147,7 @@ processKeys =
                         | selectedStation =
                             model.stations
                                 |> RemoteData.toMaybe
+                                |> Maybe.map (Station.searchStation model.searchText)
                                 |> Maybe.map Array.fromList
                                 |> MaybeX.andThen2 Array.get model.searchFocused
                                 |> Maybe.map2
@@ -157,6 +158,14 @@ processKeys =
                                     )
                                     (RemoteData.toMaybe model.stations)
                     }
+                        |> (\nextModel ->
+                                { nextModel
+                                    | searchText =
+                                        nextModel.selectedStation
+                                            |> Maybe.map (Tuple.first >> .name)
+                                            |> Maybe.withDefault nextModel.searchText
+                                }
+                           )
 
                 _ ->
                     model
@@ -201,7 +210,7 @@ update msg model =
 
                 nextModel =
                     { model | pressedKeys = pressedKeys }
-                        |> \m -> processKeys m m.pressedKeys
+                        |> (\m -> processKeys m m.pressedKeys)
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
@@ -408,7 +417,7 @@ view model =
                 , Border.color crimsonLight
                 , El.htmlAttribute (attribute "role" "combobox")
                 ]
-                (searchInput (focusedStation model) model.searchText)
+                (searchInput (MaybeX.isJust model.searchFocused) (focusedStation model) model.searchText)
             )
         ]
         (El.column
@@ -556,8 +565,8 @@ stationEl focusedIdx itemIdx station =
         }
 
 
-searchInput : Maybe String -> String -> El.Element Msg
-searchInput activeDescendant searchText =
+searchInput : Bool -> Maybe String -> String -> El.Element Msg
+searchInput focused activeDescendant searchText =
     Input.search
         [ Border.width 2
         , Border.color crimsonLight
