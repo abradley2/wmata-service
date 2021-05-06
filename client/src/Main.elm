@@ -201,6 +201,7 @@ update msg model =
 
                 nextModel =
                     { model | pressedKeys = pressedKeys }
+                        |> \m -> processKeys m m.pressedKeys
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
