@@ -66,6 +66,15 @@ searchStation query =
             )
 
 
+findCoStation : Station -> List Station -> Maybe Station
+findCoStation station stations =
+    station.coStations.coStation1
+        |> Maybe.andThen
+            (\code ->
+                List.filter (.code >> (==) code) stations |> List.head
+            )
+
+
 lineCodeDisplay : Station -> Maybe String
 lineCodeDisplay station =
     case station.coStations.coStation1 of

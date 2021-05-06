@@ -28,7 +28,7 @@ import Time exposing (Posix)
 import UUID exposing (Seeds, UUID)
 
 
-port blurs : (() -> msg) -> Sub msg
+port blurs : (D.Value -> msg) -> Sub msg
 
 
 port receivePredictions : (D.Value -> msg) -> Sub msg
@@ -83,7 +83,7 @@ type Msg
     | SearchTextChanged String
     | StationSelected Station
     | KeyboardMsg Int Keyboard.Msg
-    | Blur ()
+    | Blur D.Value
     | LoggedError (Result Http.Error ())
 
 
@@ -141,6 +141,22 @@ processKeys =
             case key of
                 Keyboard.Escape ->
                     { model | searchText = "" }
+
+                Keyboard.Enter ->
+                    { model
+                        | selectedStation =
+                            model.stations
+                                |> RemoteData.toMaybe
+                                |> Maybe.map Array.fromList
+                                |> MaybeX.andThen2 Array.get model.searchFocused
+                                |> Maybe.map2
+                                    (\allStations station ->
+                                        ( station
+                                        , Station.findCoStation station allStations
+                                        )
+                                    )
+                                    (RemoteData.toMaybe model.stations)
+                    }
 
                 _ ->
                     model
