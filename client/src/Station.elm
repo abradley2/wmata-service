@@ -55,6 +55,7 @@ searchStation : String -> List Station -> List Station
 searchStation query =
     List.filter
         (.name >> toUpper >> contains (toUpper query))
+        >> List.filter (always <| query /= "")
         >> List.sortBy .name
         >> List.sortBy
             (.name

@@ -134,6 +134,40 @@ logError clientId err =
         }
 
 
+processKeys : Model -> List Keyboard.Key -> Model
+processKeys =
+    List.foldl
+        (\key model ->
+            case key of
+                Keyboard.Escape ->
+                    { model | searchText = "" }
+
+                _ ->
+                    model
+        )
+
+
+checkFocusIndex : Model -> Model
+checkFocusIndex model =
+    case
+        ( model.searchFocused
+        , RemoteData.map (Station.searchStation model.searchText) model.stations
+        )
+    of
+        ( Just idx, Success stations ) ->
+            if idx < 0 then
+                { model | searchFocused = Just <| List.length stations - 1 }
+
+            else if idx >= List.length stations then
+                { model | searchFocused = Just 0 }
+
+            else
+                model
+
+        _ ->
+            model
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -154,12 +188,12 @@ update msg model =
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
-                    ( { nextModel | searchFocused = Just <| focusedIndex - 1 }
+                    ( { nextModel | searchFocused = Just <| focusedIndex - 1 } |> checkFocusIndex
                     , Cmd.none
                     )
 
                 South ->
-                    ( { nextModel | searchFocused = Just <| focusedIndex + 1 }
+                    ( { nextModel | searchFocused = Just <| focusedIndex + 1 } |> checkFocusIndex
                     , Cmd.none
                     )
 
@@ -537,14 +571,14 @@ searchInput activeDescendant searchText =
                 [ El.paddingEach { edges | left = 16, top = 4 }
                 , Font.color crimsonLight
                 ]
-                (El.text "Station Name")
+                (El.text "Station")
         , onChange = SearchTextChanged
         , placeholder =
             Just <|
                 Input.placeholder
                     [ Font.color gray
                     ]
-                    (El.text "Search")
+                    (El.text "Search by Station Name")
         , text = searchText
         }
 
