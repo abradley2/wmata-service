@@ -2,6 +2,7 @@ port module Main exposing (..)
 
 import Array
 import Browser exposing (element)
+import Browser.Dom as Dom
 import Element as El
 import Element.Background as Background
 import Element.Border as Border
@@ -84,6 +85,7 @@ type Msg
     | StationSelected Station
     | KeyboardMsg Int Keyboard.Msg
     | Blur D.Value
+    | InputBlurred (Result Dom.Error ())
     | LoggedError (Result Http.Error ())
 
 
@@ -134,13 +136,13 @@ logError clientId err =
         }
 
 
-processKeys : Model -> List Keyboard.Key -> Model
+processKeys : ( Model, Cmd Msg ) -> List Keyboard.Key -> ( Model, Cmd Msg )
 processKeys =
     List.foldl
-        (\key model ->
+        (\key ( model, cmd ) ->
             case key of
                 Keyboard.Escape ->
-                    { model | searchText = "" }
+                    ( { model | searchText = "" }, cmd )
 
                 Keyboard.Enter ->
                     { model
@@ -159,16 +161,25 @@ processKeys =
                                     (RemoteData.toMaybe model.stations)
                     }
                         |> (\nextModel ->
-                                { nextModel
+                                ( { nextModel
                                     | searchText =
                                         nextModel.selectedStation
                                             |> Maybe.map (Tuple.first >> .name)
                                             |> Maybe.withDefault nextModel.searchText
-                                }
+                                  }
+                                , Cmd.batch
+                                    [ cmd
+                                    , if MaybeX.isJust nextModel.selectedStation then
+                                        Task.attempt InputBlurred (Dom.blur "search-input")
+
+                                      else
+                                        Cmd.none
+                                    ]
+                                )
                            )
 
                 _ ->
-                    model
+                    ( model, cmd )
         )
 
 
@@ -196,6 +207,9 @@ checkFocusIndex model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        InputBlurred _ ->
+            ( model, Cmd.none )
+
         Blur _ ->
             ( { model
                 | pressedKeys = []
@@ -208,24 +222,24 @@ update msg model =
                 pressedKeys =
                     Keyboard.update keyboardMsg model.pressedKeys
 
-                nextModel =
+                ( nextModel, cmd ) =
                     { model | pressedKeys = pressedKeys }
-                        |> (\m -> processKeys m m.pressedKeys)
+                        |> (\m -> processKeys ( m, Cmd.none ) m.pressedKeys)
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
                     ( { nextModel | searchFocused = Just <| focusedIndex - 1 } |> checkFocusIndex
-                    , Cmd.none
+                    , cmd
                     )
 
                 South ->
                     ( { nextModel | searchFocused = Just <| focusedIndex + 1 } |> checkFocusIndex
-                    , Cmd.none
+                    , cmd
                     )
 
                 _ ->
                     ( nextModel
-                    , Cmd.none
+                    , cmd
                     )
 
         SearchFocusToggled searchFocused ->
@@ -581,6 +595,7 @@ searchInput focused activeDescendant searchText =
             ]
         , El.width (El.px 320)
         , El.centerX
+        , El.htmlAttribute (attribute "id" "search-input")
         , El.htmlAttribute (attribute "aria-controls" "station-results")
         , El.htmlAttribute (attribute "aria-autocomplete" "list")
         , El.htmlAttribute
@@ -602,7 +617,11 @@ searchInput focused activeDescendant searchText =
         , placeholder =
             Just <|
                 Input.placeholder
-                    [ Font.color gray
+                    [ if focused then
+                        Font.color white
+
+                      else
+                        Font.color gray
                     ]
                     (El.text "Search by Station Name")
         , text = searchText
