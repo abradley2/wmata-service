@@ -443,6 +443,16 @@ view model =
                 , El.width <| El.px 320
                 , El.centerX
                 , El.paddingXY 24 6
+                , El.inFront
+                    (if model.locationConfirm then
+                        El.el
+                            [ El.width El.fill
+                            ]
+                            (locationConfirmEl model)
+
+                     else
+                        El.none
+                    )
                 ]
                 [ El.el
                     [ El.height <| El.px 48
@@ -511,6 +521,39 @@ view model =
                     |> Maybe.map (List.map predictionEl)
                     |> Maybe.withDefault []
                 )
+            ]
+        )
+
+
+locationConfirmEl : Model -> El.Element Msg
+locationConfirmEl model =
+    El.el
+        [ El.paddingXY 24 24
+        , El.centerX
+        , borderShadow
+        , Background.color white
+        , Border.rounded 8
+        , Font.color white
+        ]
+        (El.row
+            [ El.spacingXY 24 0
+            ]
+            [ Input.button
+                [ El.paddingXY 16 8
+                , Border.rounded 8
+                , Background.color crimsonLight
+                ]
+                { label = El.text "Cancel"
+                , onPress = Just <| ToggleLocationConfirm False
+                }
+            , Input.button
+                [ El.paddingXY 16 8
+                , Border.rounded 8
+                , Background.color crimsonLight
+                ]
+                { label = El.text "Allow Location"
+                , onPress = Just <| ToggleLocationConfirm False
+                }
             ]
         )
 
