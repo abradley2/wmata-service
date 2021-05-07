@@ -247,6 +247,7 @@ update msg model =
                 ( { model
                     | searchFocused = Just 0
                     , searchText = ""
+                    , selectedStation = Nothing
                   }
                 , Cmd.none
                 )
