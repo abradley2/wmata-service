@@ -382,7 +382,7 @@ updateNearbyStations model =
         ( Success stations, Success location ) ->
             { model
                 | nearbyStations =
-                     List.take 3
+                    List.take 3
                         >> Just
                     <|
                         List.sortBy (.latLng >> Turf.getDistance location) stations
@@ -563,16 +563,26 @@ view model =
 
 locationConfirmEl : Model -> El.Element Msg
 locationConfirmEl model =
-    El.el
+    El.column
         [ El.paddingXY 24 24
         , El.centerX
+        , El.htmlAttribute (attribute "style" "z-index: 10;")
         , borderShadow
         , Background.color white
         , Border.rounded 8
         , Font.color white
         ]
-        (El.row
+        [ El.el
+            [ Font.color gray
+            ]
+            (El.paragraph
+                []
+                [ El.text "Your browser will request that this site be given location permissions to automatically find the station nearest you."
+                ]
+            )
+        , El.row
             [ El.spacingXY 24 0
+            , El.paddingEach { edges | top = 16 }
             ]
             [ Input.button
                 [ El.paddingXY 16 8
@@ -591,7 +601,7 @@ locationConfirmEl model =
                 , onPress = Just <| AskPosition
                 }
             ]
-        )
+        ]
 
 
 predictionEl : Prediction -> El.Element Msg
