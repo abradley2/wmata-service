@@ -26,6 +26,7 @@ import Station exposing (Station)
 import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
+import Turf
 import UUID exposing (Seeds, UUID)
 
 
@@ -36,6 +37,9 @@ port receivePredictions : (D.Value -> msg) -> Sub msg
 
 
 port receivedLocation : (D.Value -> msg) -> Sub msg
+
+
+port askPosition : () -> Cmd msg
 
 
 type alias Flags =
@@ -75,6 +79,7 @@ flagsDecoder =
 
 type Msg
     = ReceivedStations (Result Http.Error (List Station))
+    | AskPosition
     | SearchFocusToggled Bool
     | ToggleLocationConfirm Bool
     | ReceivedLocation D.Value
@@ -101,6 +106,7 @@ type alias Model =
     , location : RemoteData String ( Float, Float )
     , predictions : Maybe ( List Prediction, Posix )
     , selectedStation : Maybe ( Station, Maybe Station )
+    , nearbyStations : Maybe (List Station)
     }
 
 
@@ -207,6 +213,11 @@ checkFocusIndex model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AskPosition ->
+            ( { model | locationConfirm = False }
+            , askPosition ()
+            )
+
         InputBlurred _ ->
             ( model, Cmd.none )
 
@@ -273,14 +284,21 @@ update msg model =
                     D.decodeValue
                         (D.map2 Tuple.pair
                             (D.at [ "0" ] D.float)
-                            (D.at [ "0" ] D.float)
+                            (D.at [ "1" ] D.float)
                             |> remoteDataDecoder
                         )
                         jsonVal
                         |> Result.mapError (\err -> Failure (D.errorToString err))
                         |> ResultX.merge
             in
-            ( { model | location = location }, Cmd.none )
+            ( { model | location = location } |> updateNearbyStations
+            , case location of
+                Failure errString ->
+                    logError model.clientId errString
+
+                _ ->
+                    Cmd.none
+            )
 
         ReceivedPredictions jsonValue ->
             let
@@ -342,6 +360,7 @@ update msg model =
             ( { model
                 | stations = Failure httpErr
               }
+                |> updateNearbyStations
             , logError model.clientId <| httpErrorToString httpErr
             )
 
@@ -355,6 +374,22 @@ update msg model =
         LoggedError _ ->
             -- There's nothing we can do if we have an error logging an error
             ( model, Cmd.none )
+
+
+updateNearbyStations : Model -> Model
+updateNearbyStations model =
+    case ( model.stations, model.location ) of
+        ( Success stations, Success location ) ->
+            { model
+                | nearbyStations =
+                     List.take 3
+                        >> Just
+                    <|
+                        List.sortBy (.latLng >> Turf.getDistance location) stations
+            }
+
+        _ ->
+            model
 
 
 init : D.Value -> ( Model, Cmd Msg )
@@ -383,6 +418,7 @@ init flagsJson =
       , predictions = Nothing
       , searchFocused = Nothing
       , pressedKeys = []
+      , nearbyStations = Nothing
       }
     , Cmd.batch
         [ Http.request
@@ -552,7 +588,7 @@ locationConfirmEl model =
                 , Background.color crimsonLight
                 ]
                 { label = El.text "Allow Location"
-                , onPress = Just <| ToggleLocationConfirm False
+                , onPress = Just <| AskPosition
                 }
             ]
         )
@@ -754,7 +790,7 @@ remoteDataDecoder : D.Decoder a -> D.Decoder (RemoteData String a)
 remoteDataDecoder valueDecoder =
     D.oneOf
         [ constDecoder "Success" (D.at [ "type" ] D.string)
-            |> D.map2 (\val _ -> Success val) valueDecoder
+            |> D.map2 (\val _ -> Success val) (D.at [ "value" ] valueDecoder)
         , constDecoder "Failure" (D.at [ "type" ] D.string)
             |> D.map2 (\err _ -> Failure err) (D.at [ "error" ] D.string)
         , constDecoder "NotAsked" (D.at [ "type" ] D.string)
