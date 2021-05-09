@@ -28,6 +28,8 @@ import Task
 import Time exposing (Posix)
 import Turf
 import UUID exposing (Seeds, UUID)
+import GeoJson exposing (Position)
+import Tuple3
 
 
 port blurs : (D.Value -> msg) -> Sub msg
@@ -103,7 +105,7 @@ type alias Model =
     , searchText : String
     , searchFocused : Maybe Int
     , stations : RemoteData Http.Error (List Station)
-    , location : RemoteData String ( Float, Float )
+    , location : RemoteData String Position
     , predictions : Maybe ( List Prediction, Posix )
     , selectedStation : Maybe ( Station, Maybe Station )
     , nearbyStations : Maybe (List Station)
@@ -282,9 +284,10 @@ update msg model =
             let
                 location =
                     D.decodeValue
-                        (D.map2 Tuple.pair
+                        (D.map3 Tuple3.join
                             (D.at [ "0" ] D.float)
                             (D.at [ "1" ] D.float)
+                            (D.succeed 0)
                             |> remoteDataDecoder
                         )
                         jsonVal
@@ -386,6 +389,7 @@ updateNearbyStations model =
                         >> Just
                     <|
                         List.sortBy (.latLng >> Turf.getDistance location) stations
+                , searchFocused = Just 0
             }
 
         _ ->
@@ -495,19 +499,28 @@ view model =
                     , El.width <| El.px 48
                     ]
                     (El.html starIcon)
-                , Input.button
-                    [ Background.color crimsonLight
-                    , Border.rounded 99999
-                    , El.centerX
-                    ]
-                    { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
-                    , label =
+                , case model.location of
+                    Success _ ->
                         El.el
-                            [ El.width <| El.px 60
-                            , El.height <| El.px 60
+                            [ El.height <| El.px 48
+                            , El.width <| El.px 48
                             ]
-                            (El.html locationIcon)
-                    }
+                            (El.html starIcon)
+
+                    _ ->
+                        Input.button
+                            [ Background.color crimsonLight
+                            , Border.rounded 99999
+                            , El.centerX
+                            ]
+                            { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
+                            , label =
+                                El.el
+                                    [ El.width <| El.px 60
+                                    , El.height <| El.px 60
+                                    ]
+                                    (El.html locationIcon)
+                            }
                 , El.el
                     [ El.height <| El.px 48
                     , El.width <| El.px 48
@@ -531,17 +544,24 @@ view model =
                             "true"
                     )
                 ]
-                (model.stations
-                    |> RemoteData.map (Station.searchStation model.searchText)
-                    |> RemoteData.map (List.indexedMap (stationEl model.searchFocused))
-                    |> RemoteData.withDefault []
-                    |> (\menuItems ->
-                            if MaybeX.isJust model.selectedStation then
-                                []
+                (case model.searchText of
+                    "" ->
+                        model.nearbyStations
+                            |> Maybe.withDefault []
+                            |> List.indexedMap (stationEl model.searchFocused)
 
-                            else
-                                menuItems
-                       )
+                    _ ->
+                        model.stations
+                            |> RemoteData.map (Station.searchStation model.searchText)
+                            |> RemoteData.map (List.indexedMap (stationEl model.searchFocused))
+                            |> RemoteData.withDefault []
+                            |> (\menuItems ->
+                                    if MaybeX.isJust model.selectedStation then
+                                        []
+
+                                    else
+                                        menuItems
+                               )
                 )
             , El.column
                 [ El.centerX
@@ -707,11 +727,7 @@ searchInput focused activeDescendant searchText =
         , placeholder =
             Just <|
                 Input.placeholder
-                    [ if focused then
-                        Font.color white
-
-                      else
-                        Font.color gray
+                    [ Font.color gray
                     ]
                     (El.text "Search by Station Name")
         , text = searchText

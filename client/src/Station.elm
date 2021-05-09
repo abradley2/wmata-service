@@ -4,6 +4,8 @@ import Json.Decode as D
 import Maybe.Extra exposing (isJust)
 import String exposing (contains, indexes, toUpper)
 import Tuple exposing (pair)
+import Tuple3
+import GeoJson exposing (Position)
 
 
 type alias Station =
@@ -11,7 +13,7 @@ type alias Station =
     , name : String
     , coStations : CoStations
     , lineCodes : LineCodes
-    , latLng : ( Float, Float )
+    , latLng : Position
     }
 
 
@@ -32,9 +34,10 @@ decodeStation =
             (D.at [ "lineCode2" ] <| D.maybe D.string)
             (D.at [ "lineCode3" ] <| D.maybe D.string)
         )
-        (D.map2 pair
+        (D.map3 Tuple3.join
             (D.at [ "latitude" ] D.float)
             (D.at [ "longitude" ] D.float)
+            (D.succeed 0)
         )
 
 

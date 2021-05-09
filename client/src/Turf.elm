@@ -1,26 +1,18 @@
 module Turf exposing (..)
 
+import GeoJson exposing (Position)
+import Tuple3
 
-type alias Coord =
-    ( Float, Float )
+
+getLat =
+    Tuple3.first
 
 
-{-
-  var dLat = toRad(coordinates2[LAT] - coordinates1[LAT]);
-  var dLon = toRad(coordinates2[LON] - coordinates1[LON]);
-  var lat1 = toRad(coordinates1[LAT]);
-  var lat2 = toRad(coordinates2[LAT]);
+getLon =
+    Tuple3.second
 
-  var a = Math.pow(Math.sin(dLat/2), 2) +
-          Math.pow(Math.sin(dLon/2), 2) * Math.cos(lat1) * Math.cos(lat2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
--}
 
-getLat = Tuple.first
-
-getLon = Tuple.second
-
-getDistance : Coord -> Coord -> Float
+getDistance : Position -> Position -> Float
 getDistance coord1 coord2 =
     let
         dLat =
@@ -39,6 +31,10 @@ getDistance coord1 coord2 =
             sin (dLat / 2) ^ 2 |> (+) ((sin (dLon / 2) ^ 2) * cos lat1 * cos lat2)
 
         c =
-            2 * (atan2 (sqrt a) (sqrt <| 1 - a))
+            2 * atan2 (sqrt a) (sqrt <| 1 - a)
     in
-    c * 6373 -- let's just use KM here
+    c * 6373
+
+
+
+-- let's just use KM here

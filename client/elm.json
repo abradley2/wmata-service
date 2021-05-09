@@ -23,6 +23,7 @@
             "elm-community/result-extra": "2.4.0",
             "krisajenkins/remotedata": "6.0.1",
             "mdgriffith/elm-ui": "1.1.8",
+            "mgold/elm-geojson": "2.0.1",
             "ohanhi/keyboard": "2.0.1"
         },
         "indirect": {
