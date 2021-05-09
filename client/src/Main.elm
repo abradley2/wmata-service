@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
+import GeoJson exposing (Position)
 import Html as H
 import Html.Attributes exposing (attribute)
 import Http exposing (Error(..))
@@ -26,10 +27,9 @@ import Station exposing (Station)
 import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
+import Tuple3
 import Turf
 import UUID exposing (Seeds, UUID)
-import GeoJson exposing (Position)
-import Tuple3
 
 
 port blurs : (D.Value -> msg) -> Sub msg
@@ -112,18 +112,27 @@ type alias Model =
     }
 
 
-focusedStation : Model -> Maybe String
-focusedStation model =
-    case ( model.searchFocused, model.stations ) of
-        ( Just idx, Success stations ) ->
-            stations
-                |> Station.searchStation model.searchText
-                |> Array.fromList
-                |> Array.get idx
-                |> Maybe.map .name
+displayStations : Model -> List Station
+displayStations model =
+    case model.searchText of
+        "" ->
+            model.nearbyStations
+                |> Maybe.withDefault []
 
         _ ->
-            Nothing
+            model.stations
+                |> RemoteData.toMaybe
+                |> Maybe.map (Station.searchStation model.searchText)
+                |> Maybe.withDefault []
+
+
+focusedStation : Model -> Maybe String
+focusedStation model =
+    displayStations model
+        |> Array.fromList
+        |> Just
+        |> MaybeX.andThen2 Array.get model.searchFocused
+        |> Maybe.map .code
 
 
 logError : UUID -> String -> Cmd Msg
@@ -155,11 +164,10 @@ processKeys =
                 Keyboard.Enter ->
                     { model
                         | selectedStation =
-                            model.stations
-                                |> RemoteData.toMaybe
-                                |> Maybe.map (Station.searchStation model.searchText)
-                                |> Maybe.map Array.fromList
-                                |> MaybeX.andThen2 Array.get model.searchFocused
+                            MaybeX.andThen2
+                                Array.get
+                                model.searchFocused
+                                (displayStations model |> Array.fromList |> Just)
                                 |> Maybe.map2
                                     (\allStations station ->
                                         ( station
@@ -195,10 +203,10 @@ checkFocusIndex : Model -> Model
 checkFocusIndex model =
     case
         ( model.searchFocused
-        , RemoteData.map (Station.searchStation model.searchText) model.stations
+        , displayStations model
         )
     of
-        ( Just idx, Success stations ) ->
+        ( Just idx, stations ) ->
             if idx < 0 then
                 { model | searchFocused = Just <| List.length stations - 1 }
 
@@ -512,6 +520,7 @@ view model =
                             [ Background.color crimsonLight
                             , Border.rounded 99999
                             , El.centerX
+                            , El.htmlAttribute (attribute "tabindex" "2")
                             ]
                             { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
                             , label =
@@ -606,6 +615,7 @@ locationConfirmEl model =
             ]
             [ Input.button
                 [ El.paddingXY 16 8
+                , El.htmlAttribute (attribute "tabindex" "2")
                 , Border.rounded 8
                 , Background.color crimsonLight
                 ]
@@ -614,6 +624,7 @@ locationConfirmEl model =
                 }
             , Input.button
                 [ El.paddingXY 16 8
+                , El.htmlAttribute (attribute "tabindex" "2")
                 , Border.rounded 8
                 , Background.color crimsonLight
                 ]
@@ -672,6 +683,7 @@ stationEl focusedIdx itemIdx station =
          , Font.semiBold
          , Border.rounded 8
          , El.paddingXY 16 16
+         , El.htmlAttribute (attribute "tabindex" "3")
          , El.htmlAttribute (attribute "role" "option")
          ]
             ++ (if focused then
@@ -705,6 +717,7 @@ searchInput focused activeDescendant searchText =
             ]
         , El.width (El.px 320)
         , El.centerX
+        , El.htmlAttribute (attribute "tabindex" "1")
         , El.htmlAttribute (attribute "id" "search-input")
         , El.htmlAttribute (attribute "aria-controls" "station-results")
         , El.htmlAttribute (attribute "aria-autocomplete" "list")
