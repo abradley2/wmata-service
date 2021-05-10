@@ -302,7 +302,18 @@ update msg model =
                         |> Result.mapError (\err -> Failure (D.errorToString err))
                         |> ResultX.merge
             in
-            ( { model | location = location } |> updateNearbyStations
+            ( { model
+                | location = location
+                , locationConfirm =
+                    -- open this dialog if there's an error to inform the user
+                    case location of
+                        Failure _ ->
+                            True
+
+                        _ ->
+                            False
+              }
+                |> updateNearbyStations
             , case location of
                 Failure errString ->
                     logError model.clientId errString
@@ -604,10 +615,18 @@ locationConfirmEl model =
         [ El.el
             [ Font.color gray
             ]
-            (El.paragraph
-                []
-                [ El.text "Your browser will request that this site be given location permissions to automatically find the station nearest you."
-                ]
+            (case model.location of
+                Failure _ ->
+                    El.paragraph
+                        []
+                        [ El.text "Failed to load your location. You may need to reset permissions for this site, then try again."
+                        ]
+
+                _ ->
+                    El.paragraph
+                        []
+                        [ El.text "Your browser will request that this site be given location permissions to automatically find the station nearest you."
+                        ]
             )
         , El.row
             [ El.spacingXY 24 0

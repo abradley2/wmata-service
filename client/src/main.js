@@ -38,7 +38,7 @@ store.getItem('location', function (err, value) {
   if (err !== null) {
     app.ports.receivedLocation.send({
       type: 'Failure',
-      error: err instanceof Error ? err.message : 'Unknown error'
+      error: err instanceof Error ? err.message : 'Unknown error getting user location from cache'
     })
     return
   }
@@ -66,7 +66,7 @@ function locationSuccess(pos) {
 function locationError(err) {
   app.ports.receivedLocation.send({
     type: 'Failure',
-    error: err instanceof Error ? err.message : 'Unknown error'
+    error: err instanceof Error ? err.message : 'Unknown error getting user location'
   })
 }
 
