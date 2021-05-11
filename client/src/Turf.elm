@@ -34,7 +34,3 @@ getDistance coord1 coord2 =
             2 * atan2 (sqrt a) (sqrt <| 1 - a)
     in
     c * 6373
-
-
-
--- let's just use KM here

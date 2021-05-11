@@ -266,7 +266,7 @@ update msg model =
         SearchFocusToggled searchFocused ->
             if searchFocused then
                 ( { model
-                    | searchFocused = Just 0
+                    | searchFocused = Just -1
                     , searchText = ""
                     , selectedStation = Nothing
                   }
@@ -408,7 +408,7 @@ updateNearbyStations model =
                         >> Just
                     <|
                         List.sortBy (.latLng >> Turf.getDistance location) stations
-                , searchFocused = Just 0
+                , searchFocused = Just -1
             }
 
         _ ->
@@ -538,8 +538,19 @@ view model =
                                 El.el
                                     [ El.width <| El.px 60
                                     , El.height <| El.px 60
+                                    , El.padding 4
                                     ]
-                                    (El.html locationIcon)
+                                    (El.html <|
+                                        case model.location of
+                                            Failure _ ->
+                                                gpsOff
+
+                                            Success _ ->
+                                                gpsOn
+
+                                            _ ->
+                                                gpsUnknown
+                                    )
                             }
                 , El.el
                     [ El.height <| El.px 48
@@ -568,12 +579,12 @@ view model =
                     "" ->
                         model.nearbyStations
                             |> Maybe.withDefault []
-                            |> List.indexedMap (stationEl model.searchFocused)
+                            |> List.indexedMap (stationEl model.searchFocused True)
 
                     _ ->
                         model.stations
                             |> RemoteData.map (Station.searchStation model.searchText)
-                            |> RemoteData.map (List.indexedMap (stationEl model.searchFocused))
+                            |> RemoteData.map (List.indexedMap (stationEl model.searchFocused False))
                             |> RemoteData.withDefault []
                             |> (\menuItems ->
                                     if MaybeX.isJust model.selectedStation then
@@ -680,8 +691,8 @@ predictionEl prediction =
         ]
 
 
-stationEl : Maybe Int -> Int -> Station -> El.Element Msg
-stationEl focusedIdx itemIdx station =
+stationEl : Maybe Int -> Bool -> Int -> Station -> El.Element Msg
+stationEl focusedIdx isNearby itemIdx station =
     let
         label =
             El.paragraph [] <|
@@ -701,7 +712,25 @@ stationEl focusedIdx itemIdx station =
          , Font.color white
          , Font.semiBold
          , Border.rounded 8
-         , El.paddingXY 16 16
+         , El.onLeft <|
+            if isNearby then
+                El.el
+                    [ El.width <| El.px 28
+                    , El.height <| El.px 28
+                    , El.paddingEach { edges | right = 8 }
+                    , El.moveRight 36
+                    , El.moveDown 14
+                    ]
+                    (El.html gpsOn)
+
+            else
+                El.none
+         , El.paddingEach
+            { top = 16
+            , bottom = 16
+            , left = if isNearby then 36 else 16
+            , right = 16
+            }
          , El.htmlAttribute (attribute "tabindex" "3")
          , El.htmlAttribute (attribute "role" "option")
          ]

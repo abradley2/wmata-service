@@ -14,7 +14,7 @@ const app = Elm.Main.init({
   flags: { dev, seeds, now: Date.now() }
 })
 
-function listen() {
+function listen () {
   let timeout
   const ws = new window.WebSocket(`ws://${window.location.host}`)
   ws.onmessage = function (ev) {
@@ -53,7 +53,7 @@ store.getItem('location', function (err, value) {
 
 window.onblur = function () { app.ports.blurs.send({}) }
 
-function locationSuccess(pos) {
+function locationSuccess (pos) {
   const location = [pos.coords.latitude, pos.coords.longitude]
 
   store.setItem('location', JSON.stringify(location))
@@ -63,16 +63,18 @@ function locationSuccess(pos) {
   })
 }
 
-function locationError(err) {
-  app.ports.receivedLocation.send({
-    type: 'Failure',
-    error: err instanceof Error ? err.message : 'Unknown error getting user location'
-  })
+function locationError (err) {
+  setTimeout(function () {
+    app.ports.receivedLocation.send({
+      type: 'Failure',
+      error: err instanceof Error ? err.message : 'Unknown error getting user location'
+    })
+  }, 1500)
 }
 
 app.ports.askPosition.subscribe(getLocation)
 
-function getLocation() {
+function getLocation () {
   navigator.geolocation.getCurrentPosition(
     locationSuccess,
     locationError,
