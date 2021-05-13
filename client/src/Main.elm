@@ -44,6 +44,14 @@ port receivedLocation : (D.Value -> msg) -> Sub msg
 port askPosition : () -> Cmd msg
 
 
+type Effect
+    = NoEffect
+    | AskPositionEffect
+    | LogErrorEffect
+    | BlurInputEffect
+    | FetchStationsEffect
+
+
 type alias Flags =
     { decoded : Bool
     , now : Int
@@ -728,7 +736,12 @@ stationEl focusedIdx isNearby itemIdx station =
          , El.paddingEach
             { top = 16
             , bottom = 16
-            , left = if isNearby then 36 else 16
+            , left =
+                if isNearby then
+                    36
+
+                else
+                    16
             , right = 16
             }
          , El.htmlAttribute (attribute "tabindex" "3")
