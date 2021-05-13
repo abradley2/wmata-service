@@ -27,6 +27,8 @@ import Station exposing (Station)
 import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
+import Tuple exposing (pair)
+import Tuple2 exposing (swap)
 import Tuple3
 import Turf
 import UUID exposing (Seeds, UUID)
@@ -46,10 +48,47 @@ port askPosition : () -> Cmd msg
 
 type Effect
     = NoEffect
+    | BatchEffect (List Effect)
     | AskPositionEffect
-    | LogErrorEffect
-    | BlurInputEffect
+    | LogErrorEffect UUID String
+    | BlurInputEffect String
+    | TimeStampPredictionsEffect (List Prediction)
     | FetchStationsEffect
+
+
+effectToCmd : Effect -> Cmd Msg
+effectToCmd eff =
+    case eff of
+        NoEffect ->
+            Cmd.none
+
+        BatchEffect effs ->
+            Cmd.batch <| List.map effectToCmd effs
+
+        TimeStampPredictionsEffect predictions ->
+            Task.perform (TimeStampedPredictions predictions) Time.now
+
+        AskPositionEffect ->
+            askPosition ()
+
+        BlurInputEffect inputId ->
+            Task.attempt InputBlurred (Dom.blur inputId)
+
+        LogErrorEffect clientId errMsg ->
+            logError clientId errMsg
+
+        FetchStationsEffect ->
+            Http.request
+                { method = "GET"
+                , body = Http.emptyBody
+                , timeout = Just <| 1000 * 5
+                , headers =
+                    [ Http.header "Accept" "application/json"
+                    ]
+                , tracker = Nothing
+                , url = "/api/stations"
+                , expect = Http.expectJson ReceivedStations (D.list Station.decodeStation)
+                }
 
 
 type alias Flags =
@@ -161,13 +200,13 @@ logError clientId err =
         }
 
 
-processKeys : ( Model, Cmd Msg ) -> List Keyboard.Key -> ( Model, Cmd Msg )
-processKeys =
+processKeys : Model -> ( Model, Effect )
+processKeys m =
     List.foldl
-        (\key ( model, cmd ) ->
+        (\key ( model, eff ) ->
             case key of
                 Keyboard.Escape ->
-                    ( { model | searchText = "" }, cmd )
+                    ( { model | searchText = "" }, eff )
 
                 Keyboard.Enter ->
                     { model
@@ -191,20 +230,19 @@ processKeys =
                                             |> Maybe.map (Tuple.first >> .name)
                                             |> Maybe.withDefault nextModel.searchText
                                   }
-                                , Cmd.batch
-                                    [ cmd
-                                    , if MaybeX.isJust nextModel.selectedStation then
-                                        Task.attempt InputBlurred (Dom.blur "search-input")
+                                , if MaybeX.isJust nextModel.selectedStation then
+                                    BatchEffect [ eff, BlurInputEffect "search-input" ]
 
-                                      else
-                                        Cmd.none
-                                    ]
+                                  else
+                                    eff
                                 )
                            )
 
                 _ ->
-                    ( model, cmd )
+                    ( model, eff )
         )
+        ( m, NoEffect )
+        m.pressedKeys
 
 
 checkFocusIndex : Model -> Model
@@ -228,22 +266,22 @@ checkFocusIndex model =
             model
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect )
 update msg model =
     case msg of
         AskPosition ->
             ( { model | locationConfirm = False }
-            , askPosition ()
+            , AskPositionEffect
             )
 
         InputBlurred _ ->
-            ( model, Cmd.none )
+            ( model, NoEffect )
 
         Blur _ ->
             ( { model
                 | pressedKeys = []
               }
-            , Cmd.none
+            , NoEffect
             )
 
         KeyboardMsg focusedIndex keyboardMsg ->
@@ -253,7 +291,7 @@ update msg model =
 
                 ( nextModel, cmd ) =
                     { model | pressedKeys = pressedKeys }
-                        |> (\m -> processKeys ( m, Cmd.none ) m.pressedKeys)
+                        |> processKeys
             in
             case arrowsDirection nextModel.pressedKeys of
                 North ->
@@ -278,7 +316,7 @@ update msg model =
                     , searchText = ""
                     , selectedStation = Nothing
                   }
-                , Cmd.none
+                , NoEffect
                 )
 
             else
@@ -286,14 +324,14 @@ update msg model =
                     | searchFocused = Nothing
                     , pressedKeys = []
                   }
-                , Cmd.none
+                , NoEffect
                 )
 
         ToggleLocationConfirm locationConfirm ->
             ( { model
                 | locationConfirm = locationConfirm
               }
-            , Cmd.none
+            , NoEffect
             )
 
         ReceivedLocation jsonVal ->
@@ -324,10 +362,10 @@ update msg model =
                 |> updateNearbyStations
             , case location of
                 Failure errString ->
-                    logError model.clientId errString
+                    LogErrorEffect model.clientId errString
 
                 _ ->
-                    Cmd.none
+                    NoEffect
             )
 
         ReceivedPredictions jsonValue ->
@@ -338,19 +376,19 @@ update msg model =
             case result of
                 Ok value ->
                     ( model
-                    , Task.perform (TimeStampedPredictions value) Time.now
+                    , TimeStampPredictionsEffect value
                     )
 
                 Err err ->
                     ( model
-                    , logError model.clientId <| D.errorToString err
+                    , LogErrorEffect model.clientId <| D.errorToString err
                     )
 
         TimeStampedPredictions predictions posixTime ->
             ( { model
                 | predictions = Just ( predictions, posixTime )
               }
-            , Cmd.none
+            , NoEffect
             )
 
         StationSelected station ->
@@ -367,7 +405,7 @@ update msg model =
                 | selectedStation = Just ( station, coStation )
                 , searchText = station.name
               }
-            , Cmd.none
+            , NoEffect
             )
 
         SearchTextChanged searchText ->
@@ -376,14 +414,14 @@ update msg model =
                 , selectedStation = Nothing
                 , searchFocused = Just 0
               }
-            , Cmd.none
+            , NoEffect
             )
 
         ReceivedTime time ->
             ( { model
                 | currentTime = time
               }
-            , Cmd.none
+            , NoEffect
             )
 
         ReceivedStations (Result.Err httpErr) ->
@@ -391,19 +429,19 @@ update msg model =
                 | stations = Failure httpErr
               }
                 |> updateNearbyStations
-            , logError model.clientId <| httpErrorToString httpErr
+            , LogErrorEffect model.clientId <| httpErrorToString httpErr
             )
 
         ReceivedStations (Result.Ok stations) ->
             ( { model
                 | stations = Success stations
               }
-            , Cmd.none
+            , NoEffect
             )
 
         LoggedError _ ->
             -- There's nothing we can do if we have an error logging an error
-            ( model, Cmd.none )
+            ( model, NoEffect )
 
 
 updateNearbyStations : Model -> Model
@@ -423,7 +461,7 @@ updateNearbyStations model =
             model
 
 
-init : D.Value -> ( Model, Cmd Msg )
+init : D.Value -> ( Model, Effect )
 init flagsJson =
     let
         flagsResult =
@@ -451,19 +489,7 @@ init flagsJson =
       , pressedKeys = []
       , nearbyStations = Nothing
       }
-    , Cmd.batch
-        [ Http.request
-            { method = "GET"
-            , body = Http.emptyBody
-            , timeout = Just <| 1000 * 5
-            , headers =
-                [ Http.header "Accept" "application/json"
-                ]
-            , tracker = Nothing
-            , url = "/api/stations"
-            , expect = Http.expectJson ReceivedStations (D.list Station.decodeStation)
-            }
-        ]
+    , FetchStationsEffect
     )
 
 
@@ -827,8 +853,8 @@ subscriptions model =
 main : Program D.Value Model Msg
 main =
     element
-        { update = update
-        , init = init
+        { update = \msg model -> update msg model |> Tuple.mapSecond effectToCmd
+        , init = \flagsJson -> init flagsJson |> Tuple.mapSecond effectToCmd
         , view = view
         , subscriptions = subscriptions
         }
