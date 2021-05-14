@@ -24,6 +24,8 @@ function listen () {
       ws.close()
       setTimeout(listen, 0)
     }, 8 * 1000)
+
+    console.log(ev.data)
     app.ports.receivePredictions.send(JSON.parse(ev.data))
   }
 
@@ -54,7 +56,7 @@ store.getItem('location', function (err, value) {
 window.onblur = function () { app.ports.blurs.send({}) }
 
 function locationSuccess (pos) {
-  const location = [pos.coords.latitude, pos.coords.longitude]
+  const location = [pos.coords.longitude, pos.coords.latitude]
 
   store.setItem('location', JSON.stringify(location))
   app.ports.receivedLocation.send({

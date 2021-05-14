@@ -6,16 +6,19 @@
   "scripts": {
     "dev": "parcel serve ./src/index.html",
     "build": "parcel build ./src/index.html",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "elm-test",
+    "coverage": "elm-coverage",
     "lint": "standard --fix ./src"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "localforage": "^1.9.0",
-    "parcel": "^2.0.0-beta.2",
+    "@abradley2/elm-coverage": "^0.3.0",
     "@parcel/transformer-elm": "2.0.0-beta.2",
     "elm": "^0.19.1-5",
+    "elm-test": "^0.19.1-revision6",
+    "localforage": "^1.9.0",
+    "parcel": "^2.0.0-beta.2",
     "standard": "^16.0.3"
   }
 }

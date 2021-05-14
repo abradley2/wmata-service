@@ -4,11 +4,11 @@ import GeoJson exposing (Position)
 import Tuple3
 
 
-getLat =
+getLon =
     Tuple3.first
 
 
-getLon =
+getLat =
     Tuple3.second
 
 

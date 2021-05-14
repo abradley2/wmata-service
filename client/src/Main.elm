@@ -312,7 +312,7 @@ update msg model =
         SearchFocusToggled searchFocused ->
             if searchFocused then
                 ( { model
-                    | searchFocused = Just -1
+                    | searchFocused = Just 0
                     , searchText = ""
                     , selectedStation = Nothing
                   }
@@ -454,7 +454,7 @@ updateNearbyStations model =
                         >> Just
                     <|
                         List.sortBy (.latLng >> Turf.getDistance location) stations
-                , searchFocused = Just -1
+                , searchFocused = Just 0
             }
 
         _ ->
@@ -772,6 +772,7 @@ stationEl focusedIdx isNearby itemIdx station =
             }
          , El.htmlAttribute (attribute "tabindex" "3")
          , El.htmlAttribute (attribute "role" "option")
+         , El.htmlAttribute (attribute "data-test-option-idx" (String.fromInt itemIdx))
          ]
             ++ (if focused then
                     [ Background.color crimson

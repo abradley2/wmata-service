@@ -35,8 +35,8 @@ decodeStation =
             (D.at [ "lineCode3" ] <| D.maybe D.string)
         )
         (D.map3 Tuple3.join
-            (D.at [ "latitude" ] D.float)
             (D.at [ "longitude" ] D.float)
+            (D.at [ "latitude" ] D.float)
             (D.succeed 0)
         )
 
