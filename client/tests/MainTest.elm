@@ -7,14 +7,18 @@ import Html.Attributes as A
 import Http
 import Json.Decode as D
 import Json.Encode as E
+import Keyboard
+import Keyboard.Arrows as Arrows
 import Main exposing (..)
 import Maybe.Extra
 import Result.Extra
 import Station exposing (Station)
 import Test exposing (..)
-import Test.Html.Event as Event exposing (click, input, focus, blur)
+import Test.Html.Event as Event exposing (blur, click, focus, input)
 import Test.Html.Query as Query
 import Test.Html.Selector exposing (Selector, all, attribute, containing, id, text)
+import Prediction
+import Prediction exposing (Prediction)
 
 
 findEffect_ : Effect -> (Effect -> Maybe a) -> Maybe a
@@ -204,6 +208,64 @@ suite =
                         )
                     |> Result.mapError fail
                     |> Result.Extra.merge
+        , test "The user can navigate search results with the keyboard" <|
+            \_ ->
+                initTestApp
+                    |> (\testApp ->
+                            findEffect (Result.Err "Could not find fetch stations effect")
+                                (\e ->
+                                    case e of
+                                        FetchStationsEffect ->
+                                            Just <| Result.Ok testApp
+
+                                        _ ->
+                                            Nothing
+                                )
+                                testApp.effect
+                       )
+                    |> Result.map
+                        (updateTestApp
+                            (ReceivedStations
+                                (D.decodeString (D.list Station.decodeStation) stationsJSON
+                                    |> Result.mapError (always (Http.BadBody ""))
+                                )
+                            )
+                        )
+                    |> Result.map
+                        (updateTestApp
+                            (ReceivedPredictions
+                                (E.list Prediction.encodePrediction [])
+                            )
+                        )
+                    |> Result.andThen
+                        (userInteraction
+                            [ attribute (A.attribute "aria-autocomplete" "list")
+                            ]
+                            focus
+                        )
+                    |> Result.map
+                        (\testApp ->
+                            let
+                                prevModel =
+                                    testApp.model
+
+                                pressedKeys =
+                                    { prevModel
+                                        | pressedKeys =
+                                            [ Keyboard.ArrowLeft
+                                            , Keyboard.ArrowDown
+                                            , Keyboard.ArrowDown
+                                            , Keyboard.ArrowUp
+                                            , Keyboard.Enter
+                                            ]
+                                    }
+                            in
+                            { testApp | model = processKeys 0 pressedKeys |> Tuple.first }
+                        )
+                    |> Result.map (always pass)
+                    |> Result.mapError fail
+                    |> Result.Extra.merge
+
         ]
 
 

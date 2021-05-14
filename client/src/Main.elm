@@ -200,11 +200,21 @@ logError clientId err =
         }
 
 
-processKeys : Model -> ( Model, Effect )
-processKeys m =
+processKeys : Int -> Model -> ( Model, Effect )
+processKeys focusedIndex m =
     List.foldl
         (\key ( model, eff ) ->
             case key of
+                Keyboard.ArrowUp ->
+                    ( { model | searchFocused = Just <| focusedIndex - 1 } |> checkFocusIndex
+                    , NoEffect
+                    )
+
+                Keyboard.ArrowDown ->
+                    ( { model | searchFocused = Just <| focusedIndex + 1 } |> checkFocusIndex
+                    , NoEffect
+                    )
+
                 Keyboard.Escape ->
                     ( { model | searchText = "" }, eff )
 
@@ -288,26 +298,9 @@ update msg model =
             let
                 pressedKeys =
                     Keyboard.update keyboardMsg model.pressedKeys
-
-                ( nextModel, cmd ) =
-                    { model | pressedKeys = pressedKeys }
-                        |> processKeys
             in
-            case arrowsDirection nextModel.pressedKeys of
-                North ->
-                    ( { nextModel | searchFocused = Just <| focusedIndex - 1 } |> checkFocusIndex
-                    , cmd
-                    )
-
-                South ->
-                    ( { nextModel | searchFocused = Just <| focusedIndex + 1 } |> checkFocusIndex
-                    , cmd
-                    )
-
-                _ ->
-                    ( nextModel
-                    , cmd
-                    )
+            { model | pressedKeys = pressedKeys }
+                |> processKeys focusedIndex
 
         SearchFocusToggled searchFocused ->
             if searchFocused then
@@ -454,7 +447,6 @@ updateNearbyStations model =
                         >> Just
                     <|
                         List.sortBy (.latLng >> Turf.getDistance location) stations
-                , searchFocused = Just 0
             }
 
         _ ->

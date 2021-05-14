@@ -1,6 +1,7 @@
 module Prediction exposing (..)
 
 import Json.Decode as D
+import Json.Encode as E
 
 
 type alias Prediction =
@@ -23,3 +24,15 @@ decodePrediction =
         (D.at [ "locationCode" ] D.string)
         (D.at [ "locationName" ] D.string)
         (D.at [ "minutes" ] D.string)
+
+
+encodePrediction : Prediction -> D.Value
+encodePrediction prediction =
+    E.object
+        [ ( "line", E.string prediction.line )
+        , ( "destination", E.string prediction.destination )
+        , ( "destinationName", E.string prediction.destinationName )
+        , ( "locationCode", E.string prediction.locationCode )
+        , ( "locationName", E.string prediction.locationName )
+        , ( "minutes", E.string prediction.minutes )
+        ]
