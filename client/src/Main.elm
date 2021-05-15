@@ -295,11 +295,12 @@ update msg model =
             )
 
         KeyboardMsg focusedIndex keyboardMsg ->
-            let
-                pressedKeys =
-                    Keyboard.update keyboardMsg model.pressedKeys
-            in
-            { model | pressedKeys = pressedKeys }
+            { model
+                | pressedKeys =
+                    Keyboard.update
+                        keyboardMsg
+                        model.pressedKeys
+            }
                 |> processKeys focusedIndex
 
         SearchFocusToggled searchFocused ->
