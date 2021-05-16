@@ -204,14 +204,17 @@ processKeys : Int -> Model -> ( Model, Effect )
 processKeys focusedIndex m =
     List.foldl
         (\key ( model, eff ) ->
+            let
+                focusIdx = Maybe.withDefault focusedIndex model.searchFocused
+            in
             case key of
                 Keyboard.ArrowUp ->
-                    ( { model | searchFocused = Just <| focusedIndex - 1 } |> checkFocusIndex
+                    ( { model | searchFocused = Just <| focusIdx - 1 } |> checkFocusIndex
                     , NoEffect
                     )
 
                 Keyboard.ArrowDown ->
-                    ( { model | searchFocused = Just <| focusedIndex + 1 } |> checkFocusIndex
+                    ( { model | searchFocused = Just <| focusIdx + 1 } |> checkFocusIndex
                     , NoEffect
                     )
 
@@ -539,6 +542,7 @@ view model =
                      else
                         El.none
                     )
+                , El.htmlAttribute (attribute "aria-live" "polite")
                 ]
                 [ El.el
                     [ El.height <| El.px 48
@@ -559,6 +563,8 @@ view model =
                             , Border.rounded 99999
                             , El.centerX
                             , El.htmlAttribute (attribute "tabindex" "2")
+                            , El.htmlAttribute (attribute "aria-haspopup" "true")
+                            , El.htmlAttribute (attribute "data-test" "location-button")
                             ]
                             { onPress = Just <| ToggleLocationConfirm (not model.locationConfirm)
                             , label =
@@ -645,6 +651,7 @@ locationConfirmEl model =
         [ El.paddingXY 24 24
         , El.centerX
         , El.htmlAttribute (attribute "style" "z-index: 10;")
+        , El.htmlAttribute (attribute "data-test" "location-confirm-popup")
         , borderShadow
         , Background.color white
         , Border.rounded 8

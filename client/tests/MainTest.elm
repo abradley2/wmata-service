@@ -14,6 +14,7 @@ import Maybe.Extra
 import Prediction exposing (Prediction)
 import Result.Extra
 import Station exposing (Station)
+import SvgIcons
 import Test exposing (..)
 import Test.Html.Event as Event exposing (blur, click, focus, input)
 import Test.Html.Query as Query
@@ -183,7 +184,7 @@ suite =
                         (userInteraction
                             [ attribute (A.attribute "aria-autocomplete" "list")
                             ]
-                            (input "east")
+                            (input "metro center")
                         )
                     |> Result.andThen
                         (userInteraction
@@ -261,6 +262,8 @@ suite =
                                         | pressedKeys =
                                             [ Keyboard.ArrowLeft
                                             , Keyboard.ArrowDown
+                                            , Keyboard.ArrowDown
+                                            , Keyboard.ArrowUp
                                             , Keyboard.Enter
                                             ]
                                     }
@@ -317,6 +320,62 @@ suite =
                     |> updateTestApp (ReceivedTime (Time.millisToPosix 0))
                     |> (.model >> .currentTime)
                     |> Expect.equal (Time.millisToPosix 0)
+        , describe "We handle various location states"
+            [ test "We handle location loading" <|
+                \_ ->
+                    initTestApp
+                        |> .view
+                        |> Query.fromHtml
+                        |> Query.contains [ SvgIcons.gpsUnknown ]
+            , test "We handle location success" <|
+                \_ ->
+                    initTestApp
+                        |> updateTestApp
+                            (ReceivedLocation
+                                (E.object
+                                    [ ( "type", E.string "Success" )
+                                    , ( "value", E.list E.int [ 0, 0, 0 ] )
+                                    ]
+                                )
+                            )
+                        |> .view
+                        |> Query.fromHtml
+                        |> Query.contains [ SvgIcons.starIcon ]
+            , test "We handle location failures" <|
+                \_ ->
+                    initTestApp
+                        |> updateTestApp
+                            (ReceivedLocation
+                                (E.object
+                                    [ ( "type", E.string "Failure" )
+                                    , ( "error", E.string "uh-oh" )
+                                    ]
+                                )
+                            )
+                        |> .view
+                        |> Query.fromHtml
+                        |> Query.contains [ SvgIcons.gpsOff ]
+            ]
+        , test "The user can click the location button to enable geolocation" <|
+            \_ ->
+                initTestApp
+                    |> userInteraction
+                        [ all
+                            [ attribute (A.attribute "data-test" "location-button")
+                            , attribute (A.attribute "aria-haspopup" "true")
+                            ]
+                        ]
+                        click
+                    |> Result.map
+                        (\testApp ->
+                            Query.fromHtml testApp.view
+                                |> Query.find [ attribute <| A.attribute "data-test" "location-confirm-popup" ]
+                                |> Query.has [ attribute <| A.attribute "data-test" "location-confirm-popup" ]
+                        )
+                    |> Result.mapError fail
+                    |> Result.Extra.merge
+        , test "" <|
+            \_ -> pass
         ]
 
 
