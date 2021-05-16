@@ -1,6 +1,7 @@
 port module Main exposing (..)
 
 import Array
+import Basics.Extra exposing (flip)
 import Browser exposing (element)
 import Browser.Dom as Dom
 import Element as El
@@ -27,8 +28,6 @@ import Station exposing (Station)
 import SvgIcons exposing (..)
 import Task
 import Time exposing (Posix)
-import Tuple exposing (pair)
-import Tuple2 exposing (swap)
 import Tuple3
 import Turf
 import UUID exposing (Seeds, UUID)
@@ -137,7 +136,7 @@ type Msg
     | TimeStampedPredictions (List Prediction) Posix
     | SearchTextChanged String
     | StationSelected Station
-    | KeyboardMsg Int Keyboard.Msg
+    | KeyboardMsg Keyboard.Msg
     | Blur D.Value
     | InputBlurred (Result Dom.Error ())
     | LoggedError (Result Http.Error ())
@@ -200,21 +199,18 @@ logError clientId err =
         }
 
 
-processKeys : Int -> Model -> ( Model, Effect )
-processKeys focusedIndex m =
+processKeys : Model -> ( Model, Effect )
+processKeys m =
     List.foldl
         (\key ( model, eff ) ->
-            let
-                focusIdx = Maybe.withDefault focusedIndex model.searchFocused
-            in
             case key of
                 Keyboard.ArrowUp ->
-                    ( { model | searchFocused = Just <| focusIdx - 1 } |> checkFocusIndex
+                    ( { model | searchFocused = Maybe.map (flip (-) 1) model.searchFocused } |> checkFocusIndex
                     , NoEffect
                     )
 
                 Keyboard.ArrowDown ->
-                    ( { model | searchFocused = Just <| focusIdx + 1 } |> checkFocusIndex
+                    ( { model | searchFocused = Maybe.map ((+) 1) model.searchFocused } |> checkFocusIndex
                     , NoEffect
                     )
 
@@ -297,14 +293,14 @@ update msg model =
             , NoEffect
             )
 
-        KeyboardMsg focusedIndex keyboardMsg ->
+        KeyboardMsg keyboardMsg ->
             { model
                 | pressedKeys =
                     Keyboard.update
                         keyboardMsg
                         model.pressedKeys
             }
-                |> processKeys focusedIndex
+                |> processKeys
 
         SearchFocusToggled searchFocused ->
             if searchFocused then
@@ -578,9 +574,6 @@ view model =
                                             Failure _ ->
                                                 gpsOff
 
-                                            Success _ ->
-                                                gpsOn
-
                                             _ ->
                                                 gpsUnknown
                                     )
@@ -843,7 +836,7 @@ subscriptions model =
         , Time.every 1000 ReceivedTime
         , case model.searchFocused of
             Just focusedIndex ->
-                Sub.map (KeyboardMsg focusedIndex) Keyboard.subscriptions
+                Sub.map KeyboardMsg Keyboard.subscriptions
 
             Nothing ->
                 Sub.none

@@ -268,7 +268,7 @@ suite =
                                             ]
                                     }
                             in
-                            { testApp | model = processKeys 0 pressedKeys |> Tuple.first }
+                            { testApp | model = processKeys pressedKeys |> Tuple.first }
                         )
                     |> Result.map (updateTestApp (InputBlurred <| Result.Ok ()))
                     |> Result.map (always pass)
@@ -374,8 +374,62 @@ suite =
                         )
                     |> Result.mapError fail
                     |> Result.Extra.merge
-        , test "" <|
-            \_ -> pass
+        , test "Pressed keys are cleared on screen blur" <|
+            \_ ->
+                initTestApp
+                    |> (\testApp ->
+                            let
+                                prevModel =
+                                    testApp.model
+                            in
+                            { testApp | model = { prevModel | pressedKeys = [] } }
+                       )
+                    |> updateTestApp (Blur <| E.object [])
+                    |> (.model >> .pressedKeys >> Expect.equal [])
+        , test "Focus index can not go below 0 when responding to ArrowDown" <|
+            \_ ->
+                initTestApp
+                    |> updateTestApp
+                        (ReceivedStations stationsResult)
+                    |> userInteraction
+                        [ attribute (A.attribute "aria-autocomplete" "list")
+                        ]
+                        focus
+                    |> Result.andThen
+                        (userInteraction
+                            [ attribute (A.attribute "aria-autocomplete" "list")
+                            ]
+                            (input "east")
+                        )
+                    |> Result.map
+                        (\testApp ->
+                            let
+                                prevModel =
+                                    testApp.model
+
+                                l =
+                                    Debug.log "searchFocused" <| testApp.model.searchFocused
+
+                                ( nextModel, effect ) =
+                                    processKeys
+                                        { prevModel
+                                            | pressedKeys =
+                                                [ Keyboard.ArrowDown
+                                                , Keyboard.ArrowDown
+                                                , Keyboard.ArrowDown
+                                                , Keyboard.ArrowUp
+                                                , Keyboard.ArrowDown
+                                                , Keyboard.ArrowDown
+                                                , Keyboard.ArrowDown
+                                                ]
+                                        }
+                            in
+                            Expect.greaterThan
+                                (-1)
+                                (Maybe.withDefault -1 nextModel.searchFocused)
+                        )
+                    |> Result.mapError fail
+                    |> Result.Extra.merge
         ]
 
 
@@ -385,6 +439,12 @@ predictionsValue =
         |> D.decodeString (D.list Prediction.decodePrediction)
         |> Result.mapError D.errorToString
         |> Result.map (E.list Prediction.encodePrediction)
+
+
+stationsResult : Result Http.Error (List Station)
+stationsResult =
+    D.decodeString (D.list Station.decodeStation) stationsJSON
+        |> Result.mapError (always (Http.BadBody "Could not decode stationsJSON"))
 
 
 stationsJSON : String
