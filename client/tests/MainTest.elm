@@ -174,6 +174,34 @@ suite =
                                 )
                             )
                         )
+                    |> Result.map2
+                        (\predictions testApp ->
+                            updateTestApp
+                                (ReceivedPredictions predictions)
+                                testApp
+                        )
+                        predictionsValue
+                    |> Result.andThen
+                        (\testApp ->
+                            findEffect (Result.Err "did not attempt to timestamp predictions")
+                                (\eff ->
+                                    case eff of
+                                        TimeStampPredictionsEffect predictions ->
+                                            Just <|
+                                                Result.Ok
+                                                    (updateTestApp
+                                                        (TimeStampedPredictions
+                                                            predictions
+                                                            (Time.millisToPosix 0)
+                                                        )
+                                                        testApp
+                                                    )
+
+                                        _ ->
+                                            Nothing
+                                )
+                                testApp.effect
+                        )
                     |> Result.andThen
                         (userInteraction
                             [ attribute (A.attribute "aria-autocomplete" "list")
@@ -407,9 +435,6 @@ suite =
                                 prevModel =
                                     testApp.model
 
-                                l =
-                                    Debug.log "searchFocused" <| testApp.model.searchFocused
-
                                 ( nextModel, effect ) =
                                     processKeys
                                         { prevModel
@@ -425,7 +450,7 @@ suite =
                                         }
                             in
                             Expect.greaterThan
-                                (-1)
+                                -1
                                 (Maybe.withDefault -1 nextModel.searchFocused)
                         )
                     |> Result.mapError fail
@@ -443,7 +468,8 @@ predictionsValue =
 
 stationsResult : Result Http.Error (List Station)
 stationsResult =
-    D.decodeString (D.list Station.decodeStation) stationsJSON
+    stationsJSON
+        |> D.decodeString (D.list Station.decodeStation)
         |> Result.mapError (always (Http.BadBody "Could not decode stationsJSON"))
 
 
