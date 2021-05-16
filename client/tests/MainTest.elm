@@ -52,6 +52,7 @@ type alias TestApp =
     { model : Model
     , view : H.Html Msg
     , effect : Effect
+    , cmd : Cmd Msg
     }
 
 
@@ -61,7 +62,7 @@ initTestApp =
         ( model, effect ) =
             init flagsJSON
     in
-    TestApp model (view model) effect
+    TestApp model (view model) effect (effectToCmd effect)
 
 
 updateTestApp : Msg -> TestApp -> TestApp
@@ -73,6 +74,7 @@ updateTestApp msg testApp =
     { model = nextModel
     , effect = nextEffect
     , view = view nextModel
+    , cmd = Cmd.none
     }
 
 
@@ -90,7 +92,7 @@ userInteraction selectors ev testApp =
         |> Event.simulate ev
         |> Event.toResult
         |> Result.map (\msg -> update msg testApp.model)
-        |> Result.map (\( model, effect ) -> TestApp model (view model) effect)
+        |> Result.map (\( model, effect ) -> TestApp model (view model) effect (effectToCmd effect))
 
 
 suite : Test
@@ -168,11 +170,7 @@ suite =
                        )
                     |> Result.map
                         (updateTestApp
-                            (ReceivedStations
-                                (D.decodeString (D.list Station.decodeStation) stationsJSON
-                                    |> Result.mapError (always (Http.BadBody ""))
-                                )
-                            )
+                            (ReceivedStations stationsResult)
                         )
                     |> Result.map2
                         (\predictions testApp ->
@@ -342,6 +340,21 @@ suite =
                                 _ ->
                                     Nothing
                         )
+        , test "We log an error if we receive a malformed location" <|
+            \_ ->
+                initTestApp
+                    |> updateTestApp
+                        (ReceivedLocation (E.object []))
+                    |> .effect
+                    |> findEffect (fail "Did not log an error")
+                        (\effect ->
+                            case effect of
+                                LogErrorEffect _ _ ->
+                                    Just pass
+
+                                _ ->
+                                    Nothing
+                        )
         , test "We update our model in response to the ReceivedTime msg" <|
             \_ ->
                 initTestApp
@@ -453,6 +466,41 @@ suite =
                                 -1
                                 (Maybe.withDefault -1 nextModel.searchFocused)
                         )
+                    |> Result.mapError fail
+                    |> Result.Extra.merge
+        , test "When metro center is selected we have a co-station" <|
+            \_ ->
+                initTestApp
+                    |> updateTestApp
+                        (ReceivedStations stationsResult)
+                    |> userInteraction
+                        [ attribute (A.attribute "aria-autocomplete" "list")
+                        ]
+                        focus
+                    |> Result.andThen
+                        (userInteraction
+                            [ attribute (A.attribute "aria-autocomplete" "list")
+                            ]
+                            (input "metro center")
+                        )
+                    |> Result.andThen
+                        (userInteraction
+                            [ attribute (A.attribute "data-test-option-idx" "0")
+                            ]
+                            click
+                        )
+                    |> Result.map
+                        (\testApp ->
+                            let
+                                prevModel =
+                                    testApp.model
+                            in
+                            { prevModel
+                                | pressedKeys = [ Keyboard.Enter ]
+                            }
+                                |> processKeys
+                        )
+                    |> Result.map (Tuple.first >> .selectedStation >> Maybe.map Tuple.second >> Maybe.Extra.isJust >> Expect.equal True)
                     |> Result.mapError fail
                     |> Result.Extra.merge
         ]
