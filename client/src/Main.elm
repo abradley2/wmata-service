@@ -380,6 +380,7 @@ update msg model =
         TimeStampedPredictions predictions posixTime ->
             ( { model
                 | predictions = Just ( predictions, posixTime )
+                , currentTime = posixTime
               }
             , NoEffect
             )
@@ -523,7 +524,25 @@ view model =
         (El.column
             [ El.width El.fill
             ]
-            [ El.row
+            [ case model.predictions of
+                Just ( _, timestamp ) ->
+                    let
+                        elapsed =
+                            String.fromInt <|
+
+                                    (Time.posixToMillis model.currentTime - Time.posixToMillis timestamp)
+                                        // 1000
+                    in
+                    El.el
+                        [ El.width El.fill
+                        , Font.center
+                        , Font.color gray
+                        ]
+                        (El.text <| elapsed ++ " seconds since last update")
+
+                _ ->
+                    El.none
+            , El.row
                 [ El.spaceEvenly
                 , El.width <| El.px 320
                 , El.centerX
@@ -833,7 +852,7 @@ subscriptions model =
     Sub.batch
         [ receivePredictions ReceivedPredictions
         , receivedLocation ReceivedLocation
-        , Time.every 1000 ReceivedTime
+        , Time.every 150 ReceivedTime
         , case model.searchFocused of
             Just focusedIndex ->
                 Sub.map KeyboardMsg Keyboard.subscriptions
