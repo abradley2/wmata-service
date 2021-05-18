@@ -115,7 +115,8 @@ suite =
             \_ ->
                 initTestApp
                     |> (\testApp ->
-                            findEffect (Result.Err "Could not find fetch stations effect")
+                            findEffect
+                                (Result.Err "Could not find fetch stations effect")
                                 (\e ->
                                     case e of
                                         FetchStationsEffect ->
