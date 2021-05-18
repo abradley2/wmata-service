@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2ee105277e6b3bddb76b86f433b6588993f2c010fa32dba7bd0190260f62f73b
+-- hash: 9f4a075aab860b12dd0001705d2372dc3c3da25b5a02d474432f4640b4e936e1
 
 name:           metro-backend
 version:        0.1.0.0
@@ -55,6 +55,7 @@ library
     , rocksdb-haskell
     , scotty
     , text
+    , time
     , wai
     , wai-middleware-static
     , wai-websockets
@@ -84,6 +85,7 @@ executable metro-backend-exe
     , rocksdb-haskell
     , scotty
     , text
+    , time
     , wai
     , wai-middleware-static
     , wai-websockets
@@ -114,6 +116,7 @@ test-suite metro-backend-test
     , rocksdb-haskell
     , scotty
     , text
+    , time
     , wai
     , wai-middleware-static
     , wai-websockets

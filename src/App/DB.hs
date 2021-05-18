@@ -3,6 +3,9 @@
 
 module App.DB where
 
+import Data.Aeson (ToJSON (toJSON), Value, object, encode)
+import qualified Data.ByteString.Lazy.Char8 as LazyB8
+import Data.Time.Clock.POSIX
 import Database.RocksDB.Base
 import Relude
 
@@ -19,8 +22,19 @@ retrieveLatestPredictions db =
   where
     get = Database.RocksDB.Base.get
 
-storeLatestPredictions :: MonadIO m => DB -> ByteString -> m ()
+storeLatestPredictions :: (ToJSON a, MonadIO m) => DB -> TimeStamped a -> m ()
 storeLatestPredictions db =
-  put db defaultWriteOptions cachedPredictionsKey
+  put db defaultWriteOptions cachedPredictionsKey . LazyB8.toStrict . encode . toJSON
   where
     put = Database.RocksDB.Base.put
+
+data TimeStamped a = TimeStamped
+  { time :: POSIXTime,
+    value :: a
+  }
+
+instance ToJSON a => ToJSON (TimeStamped a) where
+  toJSON ts =
+    object
+      [ ("value", toJSON $ value ts)
+      ]

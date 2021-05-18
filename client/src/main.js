@@ -26,6 +26,7 @@ function listen () {
     }, 8 * 1000)
 
     console.log(ev.data)
+    console.log(JSON.parse(ev.data))
     app.ports.receivePredictions.send(JSON.parse(ev.data))
   }
 

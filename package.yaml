@@ -38,6 +38,7 @@ dependencies:
 - rocksdb-haskell
 - aeson
 - wai-middleware-static
+- time
 
 library:
   source-dirs: src

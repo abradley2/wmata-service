@@ -17,6 +17,7 @@ import Data.Aeson
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as LazyB8
 import qualified Data.Text.Lazy as TextLazy
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import Network.HTTP.Types.Header
 import Network.HTTP.Types.Status
 import Network.Wai
@@ -55,14 +56,13 @@ serveConnection db con = do
 pollPredictions :: MonadIO m => DataBase -> Env -> m ()
 pollPredictions db env = do
   predictions <- Predictions.fetchPredictions env
+  posixTime <- liftIO getPOSIXTime
   maybe
     (pure ())
-    (storeLatestPredictions db . LazyB8.toStrict . encode)
+    (storeLatestPredictions db . TimeStamped posixTime . toJSON)
     predictions
   liftIO pollInterval
   pollPredictions db env
-  where
-    encode = Data.Aeson.encode
 
 -- | spaMiddleware
 -- Simple middleware function that re-routes the url of any

@@ -7,7 +7,6 @@ module WMATA.Predictions where
 import WMATA.Data
 
 import Data.Aeson
-import Data.Aeson.Types
 import Relude
 
 newtype ApiResponse = ApiResponse
