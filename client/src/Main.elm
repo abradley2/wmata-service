@@ -51,7 +51,6 @@ type Effect
     | AskPositionEffect
     | LogErrorEffect UUID String
     | BlurInputEffect String
-    | TimeStampPredictionsEffect (List Prediction)
     | FetchStationsEffect
 
 
@@ -63,9 +62,6 @@ effectToCmd eff =
 
         BatchEffect effs ->
             Cmd.batch <| List.map effectToCmd effs
-
-        TimeStampPredictionsEffect predictions ->
-            Task.perform (TimeStampedPredictions predictions) Time.now
 
         AskPositionEffect ->
             askPosition ()
@@ -364,12 +360,24 @@ update msg model =
         ReceivedPredictions jsonValue ->
             let
                 result =
-                    D.decodeValue (D.list Prediction.decodePrediction) jsonValue
+                    D.decodeValue
+                        (D.map2
+                            Tuple.pair
+                            (D.field "value" <| D.list Prediction.decodePrediction)
+                            (D.field "timestamp" <| D.float)
+                        )
+                        jsonValue
             in
             case result of
-                Ok value ->
-                    ( model
-                    , TimeStampPredictionsEffect value
+                Ok ( value, timeStamp ) ->
+                    ( { model
+                        | predictions =
+                            Just
+                                ( value
+                                , Time.millisToPosix <| (floor timeStamp * 1000)
+                                )
+                      }
+                    , NoEffect
                     )
 
                 Err err ->
@@ -529,9 +537,8 @@ view model =
                     let
                         elapsed =
                             String.fromInt <|
-
-                                    (Time.posixToMillis model.currentTime - Time.posixToMillis timestamp)
-                                        // 1000
+                                (Time.posixToMillis model.currentTime - Time.posixToMillis timestamp)
+                                    // 1000
                     in
                     El.el
                         [ El.width El.fill

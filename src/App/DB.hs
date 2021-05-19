@@ -37,4 +37,5 @@ instance ToJSON a => ToJSON (TimeStamped a) where
   toJSON ts =
     object
       [ ("value", toJSON $ value ts)
+      , ("timestamp", toJSON $ time ts )
       ]

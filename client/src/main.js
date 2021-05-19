@@ -27,6 +27,7 @@ function listen () {
 
     console.log(ev.data)
     console.log(JSON.parse(ev.data))
+    console.log(ev.data)
     app.ports.receivePredictions.send(JSON.parse(ev.data))
   }
 

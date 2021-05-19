@@ -121,7 +121,7 @@ run :: IO ()
 run = Warp.run 8000 =<< app
 
 socketInterval :: IO ()
-socketInterval = threadDelay $ 1000000 * 4
+socketInterval = threadDelay $ 1000000 * 3
 
 pollInterval :: IO ()
 pollInterval = threadDelay $ 1000000 * 15
