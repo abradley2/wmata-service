@@ -6,12 +6,11 @@ const store = localforage.createInstance({
   driver: localforage.INDEXEDDB
 })
 
-const dev = window.location.pathname.includes('localhost')
 const seeds = window.crypto.getRandomValues(new Uint32Array(4))
 
 const app = Elm.Main.init({
   node: document.getElementById('app'),
-  flags: { dev, seeds, now: Date.now() }
+  flags: { seeds, now: Date.now() }
 })
 
 function listen () {
