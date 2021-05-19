@@ -124,4 +124,4 @@ socketInterval :: IO ()
 socketInterval = threadDelay $ 1000000 * 3
 
 pollInterval :: IO ()
-pollInterval = threadDelay $ 1000000 * 15
+pollInterval = threadDelay $ 1000000 * 10
