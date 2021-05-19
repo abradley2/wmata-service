@@ -542,10 +542,11 @@ view model =
                     in
                     El.el
                         [ El.width El.fill
+                        , Font.size 14
                         , Font.center
                         , Font.color gray
                         ]
-                        (El.text <| elapsed ++ " seconds since last update")
+                        (El.text <| "WMATA data refreshed " ++ elapsed ++ " seconds ago")
 
                 _ ->
                     El.none

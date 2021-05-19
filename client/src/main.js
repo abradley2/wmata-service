@@ -25,9 +25,6 @@ function listen () {
       setTimeout(listen, 0)
     }, 8 * 1000)
 
-    console.log(ev.data)
-    console.log(JSON.parse(ev.data))
-    console.log(ev.data)
     app.ports.receivePredictions.send(JSON.parse(ev.data))
   }
 
