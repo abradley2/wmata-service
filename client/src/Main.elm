@@ -723,6 +723,7 @@ predictionEl prediction =
     El.row
         [ El.width <| El.px 320
         , El.paddingXY 16 16
+        , El.htmlAttribute (attribute "data-test" "prediction-el")
         , Border.width 2
         , Border.color crimson
         , Border.rounded 8

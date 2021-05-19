@@ -277,7 +277,14 @@ suite =
                             { testApp | model = processKeys pressedKeys |> Tuple.first }
                         )
                     |> Result.map (updateTestApp (InputBlurred <| Result.Ok ()))
-                    |> Result.map (always pass)
+                    |> Result.map (\testApp ->
+                        testApp.view
+                            |> Query.fromHtml
+                            |> Query.findAll [
+                                attribute (A.attribute "data-test" "prediction-el")
+                            ]
+                            |> Query.count (Expect.greaterThan 0)
+                    )
                     |> Result.mapError fail
                     |> Result.Extra.merge
         , test "We log an error if we fail to retrieve stations" <|
