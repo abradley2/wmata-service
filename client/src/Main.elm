@@ -18,7 +18,7 @@ import Json.Decode as D
 import Json.Encode as E
 import Keyboard
 import Keyboard.Arrows exposing (Direction(..), arrowsDirection)
-import Maybe.Extra as MaybeX
+import Maybe.Extra as MaybeX exposing (isJust)
 import Platform exposing (Program)
 import Prediction exposing (Prediction)
 import Random
@@ -546,7 +546,7 @@ view model =
                         , Font.center
                         , Font.color gray
                         ]
-                        (El.text <| "WMATA data refreshed " ++ elapsed ++ " seconds ago")
+                        (El.text <| "WMATA data is " ++ elapsed ++ " seconds old")
 
                 _ ->
                     El.none
@@ -611,6 +611,22 @@ view model =
                     ]
                     (El.html starIcon)
                 ]
+            , El.column
+                [ El.htmlAttribute (attribute "aria-live" "polite")
+                , El.width <| El.px 320
+                , El.centerX
+                , El.spacingXY 0 12
+                , Font.color crimsonLight
+                ]
+                (case model.selectedStation of
+                    Just ( station, Just coStation ) ->
+                        [ stationEl model.searchFocused False -100 coStation
+                        , El.el [] (El.text <| "Showing " ++ Station.lineCodeDisplay station ++ " line times")
+                        ]
+
+                    _ ->
+                        [ El.none ]
+                )
             , El.column
                 [ El.centerX
                 , El.spacingXY 0 16
@@ -754,7 +770,12 @@ stationEl focusedIdx isNearby itemIdx station =
                 [ El.text <|
                     station.name
                         ++ " "
-                        ++ (Station.lineCodeDisplay station |> Maybe.withDefault "")
+                        ++ (if isJust station.coStations.coStation1 then
+                                Station.lineCodeDisplay station
+
+                            else
+                                ""
+                           )
                 ]
 
         focused =

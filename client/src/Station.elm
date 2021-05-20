@@ -78,16 +78,12 @@ findCoStation station stations =
             )
 
 
-lineCodeDisplay : Station -> Maybe String
+lineCodeDisplay : Station -> String
 lineCodeDisplay station =
-    station.coStations.coStation1
-        |> Maybe.map
-            (\_ ->
-                [ Just station.lineCodes.lineCode1
-                , station.lineCodes.lineCode2
-                , station.lineCodes.lineCode3
-                ]
-                    |> List.filter isJust
-                    |> List.map (Maybe.withDefault "")
-                    |> String.join ", "
-            )
+    [ Just station.lineCodes.lineCode1
+    , station.lineCodes.lineCode2
+    , station.lineCodes.lineCode3
+    ]
+        |> List.filter isJust
+        |> List.map (Maybe.withDefault "")
+        |> String.join ", "
