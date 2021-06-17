@@ -20,6 +20,10 @@
 resolver:
   url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/9.yaml
 
+nix:
+  enable: true
+  packages: [zlib bzip2 lz4 snappy zstd gmp rocksdb]
+
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
